@@ -1,4 +1,4 @@
-import type { FetchArgs, Awaitable } from "./_misc/types.ts";
+import type { FetchArgs, Awaitable } from "./_dprecated-misc/types.ts";
 
 type YakOnResolved<Res> = Parameters<Yak<Res>["pipe"]>[0];
 type YakOnRejected<Res> = Parameters<Yak<Res>["pipe"]>[1];

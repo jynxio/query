@@ -1,11 +1,11 @@
-import type { FetchArgs, Awaitable, TypedOmit } from "./_misc/types.ts";
+import type { FetchArgs, Awaitable, TypedOmit } from "./_dprecated-misc/types.ts";
 import type { RetryStrategy } from "./_strategy.ts";
 
-import { withRetry } from "./_with-retry.ts";
-import { withJSON } from "./_with-json.ts";
+import { withRetry } from "./_hooks/with-retry.ts";
 import { defaultRetryStrategy } from "./_strategy.ts";
+import { withValidate } from "./_hooks/with-validate.ts";
 
-type ValidatedResponse = TypedOmit<Response, "json"> & { json: ReturnType<typeof withJSON> };
+type ValidatedResponse = TypedOmit<Response, "json"> & { json: ReturnType<typeof withValidate> };
 type QueryStrategy = { retry?: Partial<RetryStrategy> };
 type Query<Res> = {
     (...fetchArgs: FetchArgs): Omit<Promise<Res>, "then" | "catch"> & {
@@ -28,10 +28,10 @@ function createQuery(props?: QueryStrategy): Query<ValidatedResponse> {
     return function (...args: FetchArgs) {
         // TODO(QueryError): Normalize every rejection from fetchWithRetry into QueryError at the public Query boundary.
         return fetchWithRetry(...args).then((res) => {
-            const oldMethod = res.json.bind(res);
-            const newMethod = withJSON(oldMethod);
+            const getJSONData = res.json.bind(res);
+            const getValidatedJSONData = withValidate(getJSONData);
 
-            return Object.assign(res, { json: newMethod });
+            return Object.assign(res, { json: getValidatedJSONData });
         });
     } as Query<ValidatedResponse>; // TODO: 此类型断言需要健壮的测试
 }

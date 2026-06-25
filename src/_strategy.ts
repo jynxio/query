@@ -5,7 +5,7 @@ type RetryStrategy = {
     totalTimeout: number;
     methods: readonly string[];
     status: readonly number[];
-    retryDelay: number | ((retryCount: number) => number);
+    getRetryDelay: (retryCount: number) => number;
 };
 
 const defaultRetryStrategy = {
@@ -15,7 +15,7 @@ const defaultRetryStrategy = {
     totalTimeout: Infinity,
     methods: ["GET", "HEAD"],
     status: [408, 429, 500, 502, 503, 504],
-    retryDelay: (retryCount) => 300 * 2 ** (retryCount - 1),
+    getRetryDelay: (retryCount) => 300 * 2 ** (retryCount - 1),
 } satisfies Required<RetryStrategy>;
 
 export { defaultRetryStrategy };

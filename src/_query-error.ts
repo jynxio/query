@@ -22,10 +22,8 @@ class QueryError extends Error {
         this.name = "QueryError";
     }
 
-    static exclude<T>(i: T): Exclude<T, QueryError> | undefined {
-        if (i instanceof QueryError) return;
-
-        return i as Exclude<T, QueryError>;
+    static is(i: unknown): i is QueryError {
+        return i instanceof QueryError;
     }
 }
 

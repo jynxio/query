@@ -1,4 +1,4 @@
-import { toError } from "./to-error.ts";
+import { toError } from "../_utils/to-error.ts";
 
 /**
  * TODO: 晚点，迁移到自定义错误去

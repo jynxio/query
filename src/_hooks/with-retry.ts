@@ -1,5 +1,5 @@
 import type { FetchArgs, Fetch } from "../_types.ts";
-import type { Strategy } from "../_strategy.ts";
+import type { Config } from "../_config.ts";
 
 import { isResponse } from "../_utils/is-response.ts";
 import { isAbortedError, isError, isTimeoutError } from "../_utils/is-error.ts";
@@ -8,10 +8,10 @@ import { QueryError } from "../_query-error.ts";
 import { scheduleTask } from "../_utils/schedule-task.ts";
 import { sleep } from "../_utils/sleep.ts";
 
-function withRetry(fetcher: Fetch = fetch, strategy: Strategy): Fetch {
+function withRetry(fetcher: Fetch, config: Required<Config>): Fetch {
     return async function (...args: FetchArgs): Promise<Response> {
         const timeout = new AbortController();
-        const cancelTimeout = scheduleTask(() => timeout.abort(), strategy.overallTimeout);
+        const cancelTimeout = scheduleTask(() => timeout.abort(), config.overallTimeout);
 
         const userRequest = new Request(...args);
         const userSignal = userRequest.signal;
@@ -21,7 +21,7 @@ function withRetry(fetcher: Fetch = fetch, strategy: Strategy): Fetch {
 
         compositedSignal.addEventListener("abort", cancelFetch, { once: true });
 
-        for (const iterator = createIterator({ fetcher, strategy, request: compositedRequest }); ; ) {
+        for (const iterator = createIterator({ fetcher, config, request: compositedRequest }); ; ) {
             const chunk = await iterator.next();
 
             if (compositedSignal.aborted) throw new QueryError({ type: "abortion" });
@@ -44,7 +44,7 @@ function withRetry(fetcher: Fetch = fetch, strategy: Strategy): Fetch {
 async function* createIterator(props: {
     fetcher: Fetch;
     request: Request;
-    strategy: Strategy;
+    config: Required<Config>;
 }): AsyncGenerator<void, Response, void> {
     let attemptCount = 0;
     let lastAttemptInput = props.request.clone();
@@ -58,7 +58,7 @@ async function* createIterator(props: {
         if (isAbortedError(lastAttemptOutput)) throw lastAttemptOutput;
         if (isTimeoutError(lastAttemptOutput)) throw lastAttemptOutput;
 
-        const [should, delay] = props.strategy.retry({ attemptCount, lastAttemptInput, lastAttemptOutput });
+        const [should, delay] = props.config.retry({ attemptCount, lastAttemptInput, lastAttemptOutput });
 
         if (!should) return throwIfError(lastAttemptOutput);
 

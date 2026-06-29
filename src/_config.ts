@@ -1,15 +1,15 @@
 import { isError } from "./_utils/is-error.ts";
 
-type Strategy = { attemptTimeout: number; overallTimeout: number; retry: typeof retry };
+type Config = { attemptTimeout?: number; overallTimeout?: number; retry?: typeof retry };
 
 const RETRY_COUNT = 2;
 const RETRY_STATUS = new Set([408, 413, 429, 500, 502, 503, 504]);
 const RETRY_METHOD = new Set(["get", "put", "head", "delete", "options", "trace"]);
-const DEFAULT_STRATEGY = {
+const DEFAULT_CONFIG = {
     retry,
     attemptTimeout: 10_000,
     overallTimeout: Number.POSITIVE_INFINITY,
-} as const satisfies Strategy;
+} as const satisfies Config;
 
 /**
  * The default retry strategy.
@@ -61,5 +61,5 @@ function retry(props: {
     }
 }
 
-export { DEFAULT_STRATEGY };
-export type { Strategy };
+export { DEFAULT_CONFIG };
+export type { Config };

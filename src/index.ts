@@ -1,5 +1,5 @@
-export { createQuery } from "./_create-query.ts";
-export { query } from "./_query.ts";
+export { createQuery, query } from "./_create-query.ts";
+export { query as default } from "./_create-query.ts";
+export { QueryError } from "./_query-error.ts";
 
-// TODO(QueryError): Export QueryError here if users are expected to catch typed Query errors.
-export { query as default } from "./_query.ts";
+export type { Query } from "./_types.ts";

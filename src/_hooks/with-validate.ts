@@ -1,9 +1,10 @@
 import type { StandardSchemaV1 as SSV1 } from "../_standard-schema/spec.ts";
+import type { JSONData } from "../_utils/to-json-data.ts";
 
 import { SchemaError } from "../_standard-schema/err.ts";
 import { QueryError } from "../_query-error.ts";
 
-import type { JSONData } from "../to-json-data.ts";
+type Validate = ReturnType<typeof withValidate>;
 
 function withValidate(getJSONData: () => Promise<unknown>) {
     return getValidatedJSONData;
@@ -24,3 +25,4 @@ function withValidate(getJSONData: () => Promise<unknown>) {
 }
 
 export { withValidate };
+export type { Validate };

@@ -1,12 +1,10 @@
-import type { FetchArgs, Awaitable, TypedOmit } from "./_dprecated-misc/types.ts";
-import type { RetryStrategy } from "./_strategy.ts";
+import type { FetchArgs, Awaitable, TypedOmit } from "./_types.ts";
 
 import { withRetry } from "./_hooks/with-retry.ts";
-import { defaultRetryStrategy } from "./_strategy.ts";
+import { defaultRetryStrategy } from "./_deprecated-strategy.ts";
 import { withValidate } from "./_hooks/with-validate.ts";
 
 type ValidatedResponse = TypedOmit<Response, "json"> & { json: ReturnType<typeof withValidate> };
-type QueryStrategy = { retry?: Partial<RetryStrategy> };
 type Query<Res> = {
     (...fetchArgs: FetchArgs): Omit<Promise<Res>, "then" | "catch"> & {
         then: <NextRes = Res, Fallback = never>(

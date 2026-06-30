@@ -1,4 +1,4 @@
-import { QueryError } from "../_query-error.ts";
+import { QueryError } from "../_error.ts";
 
 const ABORT_ERROR_NAME = "AbortError";
 const TIMEOUT_ERROR_NAME = "TimeoutError";

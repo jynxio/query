@@ -1,15 +1,15 @@
-import { isError } from "./_utils/is-error.ts";
+import type { QueryOpts } from "./_types.ts";
 
-type Config = { attemptTimeout?: number; overallTimeout?: number; retry?: typeof retry };
+import { isError } from "./_utils/is-error.ts";
 
 const RETRY_COUNT = 2;
 const RETRY_STATUS = new Set([408, 413, 429, 500, 502, 503, 504]);
 const RETRY_METHOD = new Set(["get", "put", "head", "delete", "options", "trace"]);
-const DEFAULT_CONFIG = {
+const DEFAULT_OPTS = {
     retry,
     attemptTimeout: 10_000,
     overallTimeout: Number.POSITIVE_INFINITY,
-} as const satisfies Config;
+} as const satisfies QueryOpts;
 
 /**
  * The default retry strategy.
@@ -61,5 +61,4 @@ function retry(props: {
     }
 }
 
-export { DEFAULT_CONFIG };
-export type { Config };
+export { DEFAULT_OPTS };

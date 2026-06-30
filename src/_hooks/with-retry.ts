@@ -1,17 +1,20 @@
-import type { FetchArgs, Fetch } from "../_types.ts";
-import type { Config } from "../_config.ts";
+import type { FetcherArgs, Fetcher } from "../_utils/types.ts";
+import type { QueryOpts } from "../_types.ts";
 
 import { isResponse } from "../_utils/is-response.ts";
 import { isAbortedError, isError, isTimeoutError } from "../_utils/is-error.ts";
 import { withCatch } from "../_utils/with-catch.ts";
-import { QueryError } from "../_query-error.ts";
+import { QueryError } from "../_error.ts";
 import { scheduleTask } from "../_utils/schedule-task.ts";
 import { sleep } from "../_utils/sleep.ts";
 
-function withRetry(fetcher: Fetch, config: Required<Config>): Fetch {
-    return async function (...args: FetchArgs): Promise<Response> {
+function withRetry(fetcher: Fetcher, opts: Required<QueryOpts>): Fetcher {
+    return async function (...args: FetcherArgs): Promise<Response> {
         const timeout = new AbortController();
-        const cancelTimeout = scheduleTask(() => timeout.abort(), config.overallTimeout);
+        const cancelTimeout =
+            opts.overallTimeout === Number.POSITIVE_INFINITY
+                ? () => {}
+                : scheduleTask(() => timeout.abort(), opts.overallTimeout);
 
         const userRequest = new Request(...args);
         const userSignal = userRequest.signal;
@@ -21,7 +24,7 @@ function withRetry(fetcher: Fetch, config: Required<Config>): Fetch {
 
         compositedSignal.addEventListener("abort", cancelFetch, { once: true });
 
-        for (const iterator = createIterator({ fetcher, config, request: compositedRequest }); ; ) {
+        for (const iterator = createIterator({ fetcher, opts, request: compositedRequest }); ; ) {
             const chunk = await iterator.next();
 
             if (compositedSignal.aborted) throw new QueryError({ type: "abortion" });
@@ -42,9 +45,9 @@ function withRetry(fetcher: Fetch, config: Required<Config>): Fetch {
 }
 
 async function* createIterator(props: {
-    fetcher: Fetch;
+    fetcher: Fetcher;
     request: Request;
-    config: Required<Config>;
+    opts: Required<QueryOpts>;
 }): AsyncGenerator<void, Response, void> {
     let attemptCount = 0;
     let lastAttemptInput = props.request.clone();
@@ -58,7 +61,7 @@ async function* createIterator(props: {
         if (isAbortedError(lastAttemptOutput)) throw lastAttemptOutput;
         if (isTimeoutError(lastAttemptOutput)) throw lastAttemptOutput;
 
-        const [should, delay] = props.config.retry({ attemptCount, lastAttemptInput, lastAttemptOutput });
+        const [should, delay] = props.opts.retry({ attemptCount, lastAttemptInput, lastAttemptOutput });
 
         if (!should) return throwIfError(lastAttemptOutput);
 

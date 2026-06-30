@@ -1,4 +1,4 @@
-import { QueryError } from "../_query-error.ts";
+import { QueryError } from "../_error.ts";
 import { withCatch } from "./with-catch.ts";
 import { toJSONData } from "./to-json-data.ts";
 

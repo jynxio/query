@@ -1,4 +1,4 @@
-import { QueryError } from "../_query-error.ts";
+import { QueryError } from "../_error.ts";
 import { scheduleTask } from "./schedule-task.ts";
 
 function sleep(duration: number, signal?: AbortSignal): Promise<void> {

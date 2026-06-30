@@ -1,11 +1,44 @@
-type Fetch = typeof fetch;
-type FetchArgs = Parameters<Fetch>;
-type Awaitable<T> = T | PromiseLike<T>;
+import type { FetcherArgs, TypedOmit, Awaitable, Fetcher } from "./_utils/types.ts";
+import type { Validate } from "./_hooks/with-json.ts";
+import type { QueryError } from "./_error.ts";
 
-type TypedOmit<T, K extends keyof T> = { [P in Exclude<keyof T, K>]: T[P] };
+type QueryResponse = TypedOmit<Response, "json"> & { json: Validate };
 
-type AnyFn = (...args: never[]) => unknown;
+type QueryOptions = {
+    attemptTimeout: number;
+    overallTimeout: number;
+    retry: (input: {
+        attemptCount: number;
+        lastAttemptInput: Request;
+        lastAttemptOutput: Response | Error;
+    }) => Readonly<[should: false] | [should: true, delay: number]>;
+};
 
-type ValueOf<T> = T[keyof T];
+type QueryConstructor = {
+    new (opts?: QueryOptions, fetcher?: Fetcher): QueryInstance;
+};
 
-export type { ValueOf, TypedOmit, Fetch, FetchArgs, Awaitable, AnyFn };
+type QueryInstance<T = QueryResponse> = {
+    (...fetchArgs: FetcherArgs): Omit<Promise<T>, "then" | "catch"> & {
+        then: <NextRes = T, Fallback = never>(
+            onResolved?: (res: T) => Awaitable<NextRes>,
+            onRejected?: (err: unknown) => Awaitable<Fallback>,
+        ) => ReturnType<QueryInstance<Awaited<NextRes | Fallback>>>;
+
+        catch: <Fallback = never>(
+            onRejected?: (err: unknown) => Awaitable<Fallback>,
+        ) => ReturnType<QueryInstance<Awaited<T | Fallback>>>;
+    };
+};
+
+namespace Query {
+    export type Error = QueryError;
+    export type Response = QueryResponse;
+
+    export type Instance = QueryInstance;
+    export type Constructor = QueryConstructor;
+
+    export type Options = QueryOptions;
+}
+
+export type { Query };

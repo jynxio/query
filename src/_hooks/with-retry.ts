@@ -18,7 +18,7 @@ function withRetry(
     fn: (...args: FetchArgs) => Promise<SchematicRes>,
     opts: Required<QueryOpts>,
 ): (...args: FetchArgs) => Promise<SchematicRes> {
-    const duration = opts.attemptTimeout;
+    const duration = opts.overallTimeout;
     const fnWithRetry = async (...args: FetchArgs): Promise<SchematicRes> => {
         const attempt = createAttempter(new Request(...args));
 

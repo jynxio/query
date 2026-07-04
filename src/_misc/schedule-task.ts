@@ -5,7 +5,9 @@ function scheduleTask(task: () => void, timeout: number): () => void {
     if (timeout <= MIN_TIMEOUT) throw new RangeError(`"timeout" must be >= ${MIN_TIMEOUT}`);
     if (timeout >= MAX_TIMEOUT) throw new RangeError(`"timeout" must be <= ${MAX_TIMEOUT}`);
 
-    // Via setTimeout
+    /**
+     *  Via setTimeout
+     */
     if (timeout > 10) {
         const handle = setTimeout(task, timeout);
         const cancelTask = () => clearTimeout(handle);
@@ -13,7 +15,9 @@ function scheduleTask(task: () => void, timeout: number): () => void {
         return cancelTask;
     }
 
-    // Via AbortSignal
+    /**
+     * Via AbortSignal
+     */
     const handle = AbortSignal.timeout(timeout);
     const cancelTask = () => handle.removeEventListener("abort", task);
 

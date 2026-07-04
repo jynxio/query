@@ -1,4 +1,5 @@
 import type { SchematicRes } from "./_types.ts";
+import type { QueryError } from "./_error.ts";
 
 import { isError } from "./_misc/guards.ts";
 
@@ -14,7 +15,7 @@ type Opts = {
         /** 上一次尝试的输入 */
         readonly input: Request;
         /** 上一次尝试的输出 */
-        readonly output: SchematicRes | Error; //// 这个似乎要变成 QueryError
+        readonly output: SchematicRes | QueryError;
     }) => Readonly<[should: false] | [should: true, delay: number]>;
 };
 

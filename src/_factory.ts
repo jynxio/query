@@ -12,7 +12,7 @@ function createRoot(
     opts: QueryOpts,
     fn: (...i: FetchArgs) => Promise<Response>,
 ): (...i: FetchArgs) => Promise<SchematicRes> {
-    return withError(withRetry(withHTTP(withJSON(fn)), opts));
+    return withError(withRetry(withHTTP(withJSON(withError(fn))), opts));
 }
 
 function createSafe(

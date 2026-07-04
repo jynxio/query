@@ -58,7 +58,7 @@ function withRetry(
             const [shouldRetry, retryDelay] = opts.retry(prevAttempt);
 
             if (!shouldRetry) return unwrap(output);
-            if (isResponse(output)) output.body?.cancel().catch(() => {}); // Revoke stream before retry // TODO: 这个是否是多余的？因为 strategy 不消费 response.body。
+            if (isResponse(output)) output.body?.cancel().catch(() => {}); // Revoke stream before retry
 
             const elapsedTime = performance.now() - startTime;
             const canRetry = elapsedTime + retryDelay < opts.overallTimeout;

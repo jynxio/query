@@ -1,27 +1,29 @@
-import type { StandardSchemaV1 as SSV1 } from "../_standard-schema/spec.ts";
-import type { TypedJSON, Fetcher, FetcherArgs } from "../_utils/types.ts";
+import type { SchematicRes, JSONData } from "../_types.ts";
+import type { StandardSchemaV1 as SSV1 } from "@standard-schema/spec";
 
-import { SchemaError } from "../_standard-schema/err.ts";
+import { SchemaError } from "@standard-schema/utils";
 import { QueryError } from "../_error.ts";
 
-function withJSON(fetcher: Fetcher) {
-    return async function (...args: FetcherArgs) {
-        const originalResponse = await fetcher(...args);
-        const originalJSON = originalResponse.json.bind(originalResponse);
-        const modifiedResponse = Object.assign(originalResponse, { json: modifiedJSON });
+function withJSON<Args extends unknown[]>(
+    fn: (...args: Args) => Promise<Response>,
+): (...args: Args) => Promise<SchematicRes> {
+    return async function (...args: Args): Promise<SchematicRes> {
+        const rawResponse = await fn(...args);
+        const rawJSON = rawResponse.json.bind(rawResponse);
+        const response = Object.assign(rawResponse, { json });
 
-        return modifiedResponse;
+        return response;
 
-        async function modifiedJSON(): Promise<TypedJSON>;
-        async function modifiedJSON<T extends SSV1>(schema: T): Promise<SSV1.InferOutput<T>>;
-        async function modifiedJSON<T extends SSV1>(schema?: SSV1): Promise<SSV1.InferOutput<T> | TypedJSON> {
-            const jsonData = (await originalJSON()) as TypedJSON;
+        async function json(): Promise<JSONData>;
+        async function json<T extends SSV1>(schema: T): Promise<SSV1.InferOutput<T>>;
+        async function json<T extends SSV1>(schema?: T): Promise<SSV1.InferOutput<T> | JSONData> {
+            const jsonData = (await rawJSON()) as JSONData;
             if (!schema) return jsonData;
 
             const validatedJSONData = await schema["~standard"].validate(jsonData);
             if (!validatedJSONData.issues) return validatedJSONData.value;
 
-            throw new QueryError({ type: "json", details: new SchemaError(validatedJSONData.issues) });
+            throw new QueryError("json", new SchemaError(validatedJSONData.issues));
         }
     };
 }

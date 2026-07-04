@@ -1,84 +1,82 @@
-import type { FetcherArgs, Fetcher } from "../_utils/types.ts";
-import type { QueryOpts } from "../_types.ts";
+import type { FetchArgs, SchematicRes } from "../_types.ts";
+import type { QueryOpts } from "../_opts.ts";
 
-import { isResponse } from "../_utils/is-response.ts";
-import { isAbortedError, isError, isTimeoutError } from "../_utils/is-error.ts";
-import { withCatch } from "../_utils/with-catch.ts";
+import { isResponse } from "../_misc/guards.ts";
+import { isAbortedError, isTimeoutError } from "../_misc/guards.ts";
 import { QueryError } from "../_error.ts";
-import { scheduleTask } from "../_utils/schedule-task.ts";
-import { sleep } from "../_utils/sleep.ts";
+import { sleep } from "../_misc/sleep.ts";
+import { withTimeout } from "./with-timeout.ts";
+import { withSafe } from "./with-safe.ts";
 
-function withRetry(fetcher: Fetcher, opts: Required<QueryOpts>): Fetcher {
-    return async function (...args: FetcherArgs): Promise<Response> {
-        const timeout = new AbortController();
-        const cancelTimeout =
-            opts.overallTimeout === Number.POSITIVE_INFINITY
-                ? () => {}
-                : scheduleTask(() => timeout.abort(), opts.overallTimeout);
+const OVERALL_TIMEOUT_ERROR = new QueryError("timeout");
+const PER_ATTEMPT_TIMEOUT_ERROR = new QueryError("timeout");
 
-        const userRequest = new Request(...args);
-        const userSignal = userRequest.signal;
+const wrapOverallTimeoutError = () => OVERALL_TIMEOUT_ERROR;
+const wrapAttemptTimeoutError = () => PER_ATTEMPT_TIMEOUT_ERROR;
 
-        const compositedSignal = AbortSignal.any([userSignal, timeout.signal]);
-        const compositedRequest = new Request(userRequest, { signal: compositedSignal });
+function withRetry(
+    fn: (...args: FetchArgs) => Promise<SchematicRes>,
+    opts: Required<QueryOpts>,
+): (...args: FetchArgs) => Promise<SchematicRes> {
+    const duration = opts.attemptTimeout;
+    const fnWithRetry = async (...args: FetchArgs): Promise<SchematicRes> => {
+        const attempt = createAttempter(new Request(...args));
 
-        compositedSignal.addEventListener("abort", cancelFetch, { once: true });
-
-        for (const iterator = createIterator({ fetcher, opts, request: compositedRequest }); ; ) {
-            const chunk = await iterator.next();
-
-            if (compositedSignal.aborted) throw new QueryError({ type: "abortion" });
-            if (!chunk.done) continue;
-
-            cancelTimeout();
-            compositedSignal.removeEventListener("abort", cancelTimeout);
-
-            return chunk.value;
-        }
-
-        function cancelFetch() {
-            cancelTimeout();
-            timeout.abort();
-            compositedSignal.removeEventListener("abort", cancelFetch);
+        for (;;) {
+            const chunk = await attempt.next();
+            if (chunk.done) return chunk.value;
         }
     };
-}
+    const fnWithTimeout = withTimeout(fnWithRetry, { duration, wrapError: wrapOverallTimeoutError });
 
-async function* createIterator(props: {
-    fetcher: Fetcher;
-    request: Request;
-    opts: Required<QueryOpts>;
-}): AsyncGenerator<void, Response, void> {
-    let attemptCount = 0;
-    let lastAttemptInput = props.request.clone();
+    return fnWithTimeout;
 
-    const safeFetch = withCatch(props.fetcher, (error) => error);
+    async function* createAttempter(request: Request): AsyncGenerator<void, SchematicRes, void> {
+        const startTime = performance.now();
+        const duration = opts.attemptTimeout;
 
-    for (;;) {
-        const lastAttemptOutput = await safeFetch(lastAttemptInput);
-        yield;
+        const fnWithTimeout = withTimeout(fn, { duration, wrapError: wrapAttemptTimeoutError });
+        const fnWithSafe = withSafe(fnWithTimeout);
 
-        if (isAbortedError(lastAttemptOutput)) throw lastAttemptOutput;
-        if (isTimeoutError(lastAttemptOutput)) throw lastAttemptOutput;
+        for (let attemptNo = 1; ; attemptNo++) {
+            const input = request.clone();
+            const either = await fnWithSafe(input);
+            const output = either.ok ? either.data : either.error;
 
-        const [should, delay] = props.opts.retry({ attemptCount, lastAttemptInput, lastAttemptOutput });
+            yield;
 
-        if (!should) return throwIfError(lastAttemptOutput);
+            if (isAbortedError(output)) throw output;
+            if (isTimeoutError(output)) {
+                const isTriggerByOverall = output === OVERALL_TIMEOUT_ERROR;
+                if (isTriggerByOverall) throw output;
 
-        // TODO: 这个是否是多余的？因为 strategy 不消费 response.body。
-        if (isResponse(lastAttemptInput)) lastAttemptInput.body?.cancel().catch(() => {}); // Revoke stream before retry
-        await sleep(delay, lastAttemptInput.signal);
-        yield;
+                const isTriggerByUser = output !== PER_ATTEMPT_TIMEOUT_ERROR;
+                if (isTriggerByUser) throw output;
+            }
 
-        attemptCount++;
-        lastAttemptInput = props.request.clone();
+            const prevAttempt = { no: attemptNo, input: input, output: output };
+            const [shouldRetry, retryDelay] = opts.retry(prevAttempt);
+
+            if (!shouldRetry) return unwrap(output);
+            if (isResponse(output)) output.body?.cancel().catch(() => {}); // Revoke stream before retry // TODO: 这个是否是多余的？因为 strategy 不消费 response.body。
+
+            const elapsedTime = performance.now() - startTime;
+            const canRetry = elapsedTime + retryDelay < opts.overallTimeout;
+
+            if (!canRetry) throw new QueryError("timeout");
+
+            await sleep(retryDelay, input.signal);
+            yield;
+        }
     }
 }
 
-function throwIfError(i: Response | Error): Response {
-    if (isError(i)) throw i;
+function unwrap(i: Error): never;
+function unwrap<T>(i: T | Error): Exclude<T, Error>;
+function unwrap<T>(i: T | Error): Exclude<T, Error> {
+    if (i instanceof Error) throw i;
 
-    return i;
+    return i as Exclude<T, Error>;
 }
 
 export { withRetry };

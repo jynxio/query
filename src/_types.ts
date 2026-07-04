@@ -1,44 +1,16 @@
-import type { FetcherArgs, TypedOmit, Awaitable, Fetcher } from "./_utils/types.ts";
-import type { Validate } from "./_hooks/with-json.ts";
-import type { QueryError } from "./_error.ts";
+import type { StandardSchemaV1 as SSV1 } from "@standard-schema/spec";
 
-type QueryResponse = TypedOmit<Response, "json"> & { json: Validate };
+type ValueOf<T> = T[keyof T];
+type Awaitable<T> = T | PromiseLike<T>;
+type TypedOmit<T, K extends keyof T> = { [P in Exclude<keyof T, K>]: T[P] };
+type Safe<T, E extends Error> = { ok: false; error: E } | { ok: true; data: T };
 
-type QueryOptions = {
-    attemptTimeout: number;
-    overallTimeout: number;
-    retry: (input: {
-        attemptCount: number;
-        lastAttemptInput: Request;
-        lastAttemptOutput: Response | Error;
-    }) => Readonly<[should: false] | [should: true, delay: number]>;
-};
+type FetchArgs = Parameters<(typeof globalThis)["fetch"]>;
 
-type QueryConstructor = {
-    new (opts?: QueryOptions, fetcher?: Fetcher): QueryInstance;
-};
+type JSONText = string;
+type JSONData = null | boolean | number | string | JSONData[] | { [key: string]: JSONData };
 
-type QueryInstance<T = QueryResponse> = {
-    (...fetchArgs: FetcherArgs): Omit<Promise<T>, "then" | "catch"> & {
-        then: <NextRes = T, Fallback = never>(
-            onResolved?: (res: T) => Awaitable<NextRes>,
-            onRejected?: (err: unknown) => Awaitable<Fallback>,
-        ) => ReturnType<QueryInstance<Awaited<NextRes | Fallback>>>;
+type SchematicRes = TypedOmit<Response, "json"> & { json: SchematicJSONMethod };
+type SchematicJSONMethod = { (): Promise<JSONData>; <T extends SSV1>(i: T): Promise<SSV1.InferOutput<T>> };
 
-        catch: <Fallback = never>(
-            onRejected?: (err: unknown) => Awaitable<Fallback>,
-        ) => ReturnType<QueryInstance<Awaited<T | Fallback>>>;
-    };
-};
-
-namespace Query {
-    export type Error = QueryError;
-    export type Response = QueryResponse;
-
-    export type Instance = QueryInstance;
-    export type Constructor = QueryConstructor;
-
-    export type Options = QueryOptions;
-}
-
-export type { Query };
+export type { Safe, ValueOf, Awaitable, TypedOmit, FetchArgs, JSONText, JSONData, SchematicRes };

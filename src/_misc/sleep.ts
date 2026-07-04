@@ -11,7 +11,7 @@ function sleep(duration: number, signal?: AbortSignal): Promise<void> {
 
     function reject() {
         cancelResolve();
-        handle.reject(new QueryError({ type: "abortion" }));
+        handle.reject(new QueryError("abortion"));
     }
 
     function resolve() {

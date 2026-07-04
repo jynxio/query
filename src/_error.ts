@@ -1,30 +1,27 @@
-import type { SchemaError } from "./_standard-schema/err.ts";
+import type { SchematicRes } from "./_types.ts";
 
-type Cause =
-    | { type: "timeout" }
-    | { type: "abortion" }
-    | { type: "json"; details: SchemaError }
-    | {
-          type: "http";
-          details: {
-              response: Response;
-              statusCode: number;
-              statusText: string;
-              statusError: () => Promise<unknown>;
-          };
-      };
+import { SchemaError } from "@standard-schema/utils";
 
-class QueryError extends Error {
-    declare cause: Cause;
+type Inst = QueryError;
+type Ctor = typeof QueryError;
+type Cause = { unknown: unknown; timeout: never; abortion: never; json: JSONCause; http: HTTPCause };
+type JSONCause = SchemaError;
+type HTTPCause = {
+    statusCode: number;
+    statusText: string;
+    response: SchematicRes;
+    statusError: () => Promise<unknown>;
+};
 
-    constructor(cause: Cause) {
-        super(undefined, { cause });
+class QueryError<T extends keyof Cause = keyof Cause> extends Error {
+    declare name: "QueryError";
+    declare cause: { type: T; details: Cause[T] };
+
+    constructor(...[type, details]: Cause[T] extends never ? [T] : [T, Cause[T]]) {
+        super(undefined, { cause: { type, details } });
         this.name = "QueryError";
-    }
-
-    static is(i: unknown): i is QueryError {
-        return i instanceof QueryError;
     }
 }
 
 export { QueryError };
+export type { Cause as QueryErrorCause, Inst as QueryErrorInst, Ctor as QueryErrorCtor };

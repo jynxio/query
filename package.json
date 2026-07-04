@@ -43,5 +43,9 @@
       "vite": "npm:@voidzero-dev/vite-plus-core@latest",
       "vitest": "npm:@voidzero-dev/vite-plus-test@latest"
     }
+  },
+  "dependencies": {
+    "@standard-schema/spec": "^1.1.0",
+    "@standard-schema/utils": "^0.3.0"
   }
 }

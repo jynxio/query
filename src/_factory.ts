@@ -1,32 +1,25 @@
-import type { FetcherArgs, Fetcher } from "./_utils/types.ts";
-import type { QueryInst, QueryOpts } from "./_types.ts";
+import type { QueryOpts } from "./_opts.ts";
+import type { QueryError } from "./_error.ts";
+import type { FetchArgs, Safe, SchematicRes } from "./_types.ts";
 
 import { withRetry } from "./_hooks/with-retry.ts";
-import { DEFAULT_OPTS } from "./_opts.ts";
-import { withValidate } from "./_hooks/with-json.ts";
-import { normalizeResponse } from "./_utils/normalize-response.ts";
+import { withJSON } from "./_hooks/with-json.ts";
+import { withHTTP } from "./_hooks/with-http.ts";
+import { withError } from "./_hooks/with-error.ts";
+import { withSafe } from "./_hooks/with-safe.ts";
 
-const query = (() => {
-    let inst: QueryInst | undefined = undefined;
-    const fn: QueryInst = (...args) => (inst ||= createQuery())(...args);
-
-    return fn;
-})();
-
-function createQuery(opts: QueryOpts = {}, fetcher: Fetcher = globalThis.fetch) {
-    //// 先包 validate 再包 retry
-    const fetcherWithRetry = withRetry(fetcher, { ...DEFAULT_OPTS, ...opts });
-
-    return function fetcherWithValidate(...args: FetcherArgs) {
-        return fetcherWithRetry(...args)
-            .then(normalizeResponse)
-            .then((res) => {
-                const getJSONData = res.json.bind(res);
-                const getValidatedJSONData = withValidate(getJSONData);
-
-                return Object.assign(res, { json: getValidatedJSONData });
-            });
-    } as QueryInst; // TODO: 此类型断言需要健壮的测试
+function createRoot(
+    opts: QueryOpts,
+    fn: (...i: FetchArgs) => Promise<Response>,
+): (...i: FetchArgs) => Promise<SchematicRes> {
+    return withError(withRetry(withHTTP(withJSON(fn)), opts));
 }
 
-export { createQuery, query };
+function createSafe(
+    opts: QueryOpts,
+    fn: (...i: FetchArgs) => Promise<Response>,
+): (...i: FetchArgs) => Promise<Safe<SchematicRes, QueryError>> {
+    return withSafe(createRoot(opts, fn));
+}
+
+export { createRoot, createSafe };

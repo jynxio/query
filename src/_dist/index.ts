@@ -35,7 +35,7 @@ function _Query(
     let rootKernel: Root | undefined;
     let safeKernel: Safe | undefined;
 
-    const mergedOpts = { ...QUERY_OPTS, opts };
+    const mergedOpts = { ...QUERY_OPTS, ...opts } satisfies QueryOpts;
     const rootShell = (...i: RootArgs) => (rootKernel ??= createRoot(mergedOpts, fn))(...i);
     const safeShell = (...i: SafeArgs) => (safeKernel ??= createSafe(mergedOpts, fn))(...i);
 

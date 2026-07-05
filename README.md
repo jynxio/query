@@ -1,1 +1,1 @@
-# yak
+<h2 align="center"><samp>@jynxio/query</samp></h2>

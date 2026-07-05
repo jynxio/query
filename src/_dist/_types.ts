@@ -22,8 +22,6 @@ type _QueryInst<T = QueryRes, E = QueryErrorInst> = {
     };
 };
 
-// Query
 export type { QueryRes, QueryOpts, QueryCtor, QueryInst };
 
-// QueryError
 export type { QueryErrorInst, QueryErrorCtor, QueryErrorCause };

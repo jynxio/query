@@ -8,13 +8,11 @@ import { QueryError } from "../_error.ts";
 
 type Query = QueryInst;
 type QueryType = {
-    // Query
     Res: QueryRes;
     Opts: QueryOpts;
     Ctor: QueryCtor;
     Inst: QueryInst;
 
-    // QueryError
     ErrorInst: QueryErrorInst;
     ErrorCtor: QueryErrorCtor;
     ErrorCause: QueryErrorCause;

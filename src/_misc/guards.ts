@@ -26,7 +26,8 @@ function isAbortedError(i: unknown): boolean {
 }
 
 /**
- * Copy from Ky.
+ * From Ky.
+ *
  * @see {@link https://github.com/sindresorhus/ky/blob/61d6d66d27911001b9b4d57ab93139f9ad61384b/source/core/Ky.ts#L78}
  */
 function isRequest(i: unknown): i is Request {
@@ -37,7 +38,8 @@ function isRequest(i: unknown): i is Request {
 }
 
 /**
- * Copy from Ky.
+ * From Ky.
+ *
  * @see {@link https://github.com/sindresorhus/ky/blob/61d6d66d27911001b9b4d57ab93139f9ad61384b/source/core/Ky.ts#L84}
  */
 function isResponse(i: unknown): i is Response {

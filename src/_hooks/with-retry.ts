@@ -5,6 +5,7 @@ import { isResponse } from "../_misc/guards.ts";
 import { isAbortedError, isTimeoutError } from "../_misc/guards.ts";
 import { QueryError } from "../_error.ts";
 import { sleep } from "../_misc/sleep.ts";
+import { toRequest } from "../_misc/transformers.ts";
 import { withTimeout } from "./with-timeout.ts";
 import { withSafe } from "./with-safe.ts";
 
@@ -20,7 +21,8 @@ function withRetry(
 ): (...args: FetchArgs) => Promise<SchematicRes> {
     const duration = opts.overallTimeout;
     const fnWithRetry = async (...args: FetchArgs): Promise<SchematicRes> => {
-        const attempt = createAttempter(new Request(...args));
+        const request = toRequest(...args);
+        const attempt = createAttempter(request);
 
         for (;;) {
             const chunk = await attempt.next();
@@ -55,17 +57,17 @@ function withRetry(
             }
 
             const prevAttempt = { no: attemptNo, input: input, output: output };
-            const [shouldRetry, retryDelay] = opts.retry(prevAttempt);
+            const retry = opts.retry(prevAttempt);
 
-            if (!shouldRetry) return unwrap(output);
-            if (isResponse(output)) output.body?.cancel().catch(() => {}); // Revoke stream before retry
+            if (!retry.should) return unwrap(output);
+            if (isResponse(output)) output.body?.cancel().catch(() => {}); // Cancel body before retry.
 
             const elapsedTime = performance.now() - startTime;
-            const canRetry = elapsedTime + retryDelay < opts.overallTimeout;
+            const canRetry = elapsedTime + retry.delay < opts.overallTimeout;
 
             if (!canRetry) throw new QueryError("timeout");
 
-            await sleep(retryDelay, input.signal);
+            await sleep(retry.delay, input.signal);
             yield;
         }
     }

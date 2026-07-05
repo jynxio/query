@@ -1,5 +1,5 @@
 import { QueryError } from "../_error.ts";
-import { isQueryError } from "../_misc/guards.ts";
+import { isAbortedError, isQueryError, isTimeoutError } from "../_misc/guards.ts";
 import { toError } from "../_misc/transformers.ts";
 
 function withError<Args extends unknown[], Res>(
@@ -10,6 +10,8 @@ function withError<Args extends unknown[], Res>(
             return await fn(...args);
         } catch (unknown) {
             if (isQueryError(unknown)) throw unknown;
+            if (isTimeoutError(unknown)) throw new QueryError("timeout");
+            if (isAbortedError(unknown)) throw new QueryError("abortion");
 
             throw new QueryError("unknown", toError(unknown));
         }

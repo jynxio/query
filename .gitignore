@@ -1,4 +1,48 @@
-node_modules
-dist
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+coverage/
+
+# Vite+ / Vite / Vitest caches
+.vite/
+node_modules/.vite/
+
+# Package manager caches
+.npm/
+.pnpm-store/
+.yarn/
+!.yarn/patches/
+!.yarn/plugins/
+!.yarn/releases/
+!.yarn/sdks/
+!.yarn/versions/
+
+# Logs
 *.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime and test artifacts
+*.pid
+*.seed
+*.tgz
+*.tsbuildinfo
+
+# Environment files
+.env
+.env.*
+!.env.example
+!.env.sample
+
+# OS files
 .DS_Store
+Thumbs.db
+
+# Editor files
+.idea/
+*.swp
+*.swo

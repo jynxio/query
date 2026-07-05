@@ -1,7 +1,12 @@
 {
     "name": "@jynxio/query",
-    "version": "0.1.0",
-    "description": "A starter for creating a TypeScript package.",
+    "version": "coming-soon",
+    "description": "Fetch-compatible HTTP client. Batteries included",
+    "keywords": [
+        "fetch",
+        "http-client",
+        "request"
+    ],
     "homepage": "https://github.com/jynxio/query",
     "bugs": {
         "url": "https://github.com/jynxio/query/issues"

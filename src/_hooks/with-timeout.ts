@@ -1,5 +1,6 @@
 import type { FetchArgs } from "../_types.ts";
 
+import { toRequest } from "../_misc/transformers.ts";
 import { scheduleTask } from "../_misc/schedule-task.ts";
 import { QueryError } from "../_error.ts";
 
@@ -12,12 +13,29 @@ function withTimeout<Res>(
     return (...args: FetchArgs) => fnWithTimeout(...args).finally(cleanup);
 
     async function fnWithTimeout(...args: FetchArgs): Promise<Res> {
-        const userRequest = new Request(...args);
+        const userRequest = toRequest(...args);
         const userSignal = userRequest.signal;
         const timeout = scheduleTimeout();
 
         const compositedSignal = AbortSignal.any([userSignal, timeout.signal]);
-        const compositedRequest = new Request(userRequest, { signal: compositedSignal });
+
+        /**
+         * Keep fields while replacing signal.
+         *
+         * @remarks
+         * Node drops referrerPolicy otherwise.
+         */
+        const compositedRequest = new Request(userRequest, {
+            cache: userRequest.cache,
+            credentials: userRequest.credentials,
+            integrity: userRequest.integrity,
+            keepalive: userRequest.keepalive,
+            mode: userRequest.mode,
+            redirect: userRequest.redirect,
+            referrer: userRequest.referrer,
+            referrerPolicy: userRequest.referrerPolicy,
+            signal: compositedSignal,
+        });
 
         cleanup = timeout.cancel;
         return fn(compositedRequest);

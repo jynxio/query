@@ -4,19 +4,37 @@ import type { QueryError } from "./_error.ts";
 import { isError } from "./_misc/guards.ts";
 
 type Opts = {
-    /** 单次尝试的时间上限 */
+    /**
+     * Max time for one try.
+     *
+     * @defaultValue 10_000
+     */
     attemptTimeout: number;
-    /** 总的时间上限 */
+    /**
+     * Max time for the whole call.
+     *
+     * @defaultValue Number.POSITIVE_INFINITY
+     */
     overallTimeout: number;
-    /** 设置下一次重试 */
+    /**
+     * Decides the next try.
+     *
+     * @defaultValue Retry twice for safe methods and selected status codes.
+     */
     retry: (prevAttempt: {
-        /** 上一次尝试的编号，从 1 开始 */
+        /**
+         * Try number. Starts at 1.
+         */
         readonly no: number;
-        /** 上一次尝试的输入 */
+        /**
+         * Previous input.
+         */
         readonly input: Request;
-        /** 上一次尝试的输出 */
+        /**
+         * Previous output.
+         */
         readonly output: SchematicRes | QueryError;
-    }) => Readonly<[should: false] | [should: true, delay: number]>;
+    }) => Readonly<{ should: false } | { should: true; delay: number }>;
 };
 
 const RETRY_COUNT = 2;
@@ -25,33 +43,34 @@ const RETRY_METHOD = new Set(["get", "put", "head", "delete", "options", "trace"
 const OPTS = { retry, attemptTimeout: 10_000, overallTimeout: Number.POSITIVE_INFINITY } satisfies Opts;
 
 /**
- * 默认的重试策略。
- * - 最大重试次数: 2
- * - 允许重试的 Status: 408, 413, 429, 500, 502, 503, 504
- * - 允许重试的 Method: GET, PUT, HEAD, DELETE, OPTIONS, TRACE
- * - 下一次重试的延迟：优先遵循响应头的 Retry-After 字段，如果没有，就使用退避算法（300ms -> 600ms，没有 Jitter 与 Backoff Limit）
+ * Default retry.
+ *
+ * @remarks
+ * Retries twice for GET, PUT, HEAD, DELETE, OPTIONS, and TRACE.
+ * Retries 408, 413, 429, 500, 502, 503, and 504.
+ * Uses Retry-After first. Falls back to 300 ms, then 600 ms.
  */
 function retry(prevAttempt: {
     readonly no: number;
     readonly input: Request;
     readonly output: Error | SchematicRes;
-}): Readonly<[should: false] | [should: true, delay: number]> {
+}): Readonly<{ should: false } | { should: true; delay: number }> {
     const attemptCountSoFar = prevAttempt.no;
-    if (attemptCountSoFar > RETRY_COUNT) return [false];
+    if (attemptCountSoFar > RETRY_COUNT) return { should: false };
 
     const isMetMethod = RETRY_METHOD.has(prevAttempt.input.method.toLowerCase());
-    if (!isMetMethod) return [false];
+    if (!isMetMethod) return { should: false };
 
     const localDelay = 300 * 2 ** (attemptCountSoFar - 1);
-    if (isError(prevAttempt.output)) return [true, localDelay];
+    if (isError(prevAttempt.output)) return { should: true, delay: localDelay };
 
     const isMetStatus = RETRY_STATUS.has(prevAttempt.output.status);
-    if (!isMetStatus) return [false];
+    if (!isMetStatus) return { should: false };
 
     const remoteDelay = parseRetryAfterField(prevAttempt.output);
-    if (remoteDelay === undefined) return [true, localDelay];
+    if (remoteDelay === undefined) return { should: true, delay: localDelay };
 
-    return [true, remoteDelay];
+    return { should: true, delay: remoteDelay };
 }
 
 function parseRetryAfterField(res: Response): number | undefined {

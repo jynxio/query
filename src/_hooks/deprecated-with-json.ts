@@ -4,6 +4,7 @@ import type { StandardSchemaV1 as SSV1 } from "@standard-schema/spec";
 import { SchemaError } from "@standard-schema/utils";
 import { QueryError } from "../_error.ts";
 
+// TODO: 考虑废弃
 function withJSON<Args extends unknown[]>(
     fn: (...args: Args) => Promise<Response>,
 ): (...args: Args) => Promise<SchematicRes> {

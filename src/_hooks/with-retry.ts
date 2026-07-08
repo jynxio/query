@@ -1,11 +1,12 @@
-import type { FetchArgs, SchematicRes } from "../_types.ts";
+import type { QueryFetch } from "../_types.ts";
 import type { QueryOpts } from "../_opts.ts";
+import type { QueryRequest } from "../_request.ts";
+import type { QueryResponse } from "../_response.ts";
 
 import { isResponse } from "../_misc/guards.ts";
 import { isAbortedError, isTimeoutError } from "../_misc/guards.ts";
 import { QueryError } from "../_error.ts";
 import { sleep } from "../_misc/sleep.ts";
-import { toRequest } from "../_misc/transformers.ts";
 import { withTimeout } from "./with-timeout.ts";
 import { withSafe } from "./with-safe.ts";
 
@@ -15,13 +16,9 @@ const PER_ATTEMPT_TIMEOUT_ERROR = new QueryError("timeout");
 const wrapOverallTimeoutError = () => OVERALL_TIMEOUT_ERROR;
 const wrapAttemptTimeoutError = () => PER_ATTEMPT_TIMEOUT_ERROR;
 
-function withRetry(
-    fn: (...args: FetchArgs) => Promise<SchematicRes>,
-    opts: Required<QueryOpts>,
-): (...args: FetchArgs) => Promise<SchematicRes> {
+function withRetry(fn: QueryFetch, opts: Required<QueryOpts>): QueryFetch {
     const duration = opts.overallTimeout;
-    const fnWithRetry = async (...args: FetchArgs): Promise<SchematicRes> => {
-        const request = toRequest(...args);
+    const fnWithRetry: QueryFetch = async (request) => {
         const attempt = createAttempter(request);
 
         for (;;) {
@@ -33,7 +30,7 @@ function withRetry(
 
     return fnWithTimeout;
 
-    async function* createAttempter(request: Request): AsyncGenerator<void, SchematicRes, void> {
+    async function* createAttempter(request: QueryRequest): AsyncGenerator<void, QueryResponse, void> {
         const startTime = performance.now();
         const duration = opts.attemptTimeout;
 

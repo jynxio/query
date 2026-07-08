@@ -1,58 +1,34 @@
-import type { FetchArgs } from "../_types.ts";
+import type { AbortableFetchLike } from "../_types.ts";
 
-import { toRequest } from "../_misc/transformers.ts";
 import { scheduleTask } from "../_misc/schedule-task.ts";
 import { QueryError } from "../_error.ts";
+import { QUERY_REQUEST_ABORT } from "../_consts.ts";
 
-function withTimeout<Res>(
-    fn: (...args: FetchArgs) => Promise<Res>,
+/**
+ * @todo
+ * 给 QueryFetch 设定时间上限，达到上限后强制杀死，它是否可以结束 Network 里的 fetch，取决于 QueryRequest
+ */
+function withTimeout(
+    fn: AbortableFetchLike,
     opts: { duration: number; wrapError?: (i: QueryError<"timeout">) => Error },
-): (...args: FetchArgs) => Promise<Res> {
-    let cleanup = () => {};
+): AbortableFetchLike {
+    const hasNoTimeout = opts.duration === Number.POSITIVE_INFINITY;
+    if (hasNoTimeout) return fn;
 
-    return (...args: FetchArgs) => fnWithTimeout(...args).finally(cleanup);
+    return async function (request: QueryRequest): Promise<QueryResponse> {
+        const handle = Promise.withResolvers<never>();
+        const cleanupTask = scheduleTask(timeoutTask, opts.duration);
 
-    async function fnWithTimeout(...args: FetchArgs): Promise<Res> {
-        const userRequest = toRequest(...args);
-        const userSignal = userRequest.signal;
-        const timeout = scheduleTimeout();
+        return Promise.race([fn(request), handle.promise]).finally(cleanupTask);
 
-        const compositedSignal = AbortSignal.any([userSignal, timeout.signal]);
+        function timeoutTask() {
+            const wrapError = opts.wrapError ?? ((i) => i);
+            const error = wrapError(new QueryError("timeout"));
 
-        /**
-         * Keep fields while replacing signal.
-         *
-         * @remarks
-         * Node drops referrerPolicy otherwise.
-         */
-        const compositedRequest = new Request(userRequest, {
-            cache: userRequest.cache,
-            credentials: userRequest.credentials,
-            integrity: userRequest.integrity,
-            keepalive: userRequest.keepalive,
-            mode: userRequest.mode,
-            redirect: userRequest.redirect,
-            referrer: userRequest.referrer,
-            referrerPolicy: userRequest.referrerPolicy,
-            signal: compositedSignal,
-        });
-
-        cleanup = timeout.cancel;
-        return fn(compositedRequest);
-    }
-
-    function scheduleTimeout(): { cancel: () => void; signal: AbortSignal } {
-        const handle = new AbortController();
-        const should = opts.duration !== Number.POSITIVE_INFINITY;
-
-        if (!should) return { signal: handle.signal, cancel: () => {} };
-
-        const wrapError = opts.wrapError ?? ((i) => i);
-        const trigger = () => handle.abort(wrapError(new QueryError("timeout")));
-        const cancel = scheduleTask(trigger, opts.duration);
-
-        return { cancel, signal: handle.signal };
-    }
+            handle.reject(error);
+            request[QUERY_REQUEST_ABORT](error);
+        }
+    };
 }
 
 export { withTimeout };

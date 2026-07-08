@@ -1,13 +1,11 @@
-import type { JSONData, SchematicRes, Safe } from "../_types.ts";
+import type { JSONData, NormalizedFetch, Safe } from "../_types.ts";
 
 import { QueryError } from "../_error.ts";
 import { toJSON } from "../_misc/transformers.ts";
 
-function withHTTP<Args extends unknown[]>(
-    fn: (...args: Args) => Promise<SchematicRes>,
-): (...args: Args) => Promise<SchematicRes> {
-    return async function (...args: Args): Promise<SchematicRes> {
-        const response = await fn(...args);
+function withHTTP(fn: NormalizedFetch): NormalizedFetch {
+    return async function (request) {
+        const response = await fn(request);
 
         if (response.ok) return response;
         if (response.type === "opaque") return response;

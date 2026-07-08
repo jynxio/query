@@ -73,8 +73,8 @@ function retry(prevAttempt: {
     return { should: true, delay: remoteDelay };
 }
 
-function parseRetryAfterField(res: Response): number | undefined {
-    const field = res.headers.get("Retry-After");
+function parseRetryAfterField(response: Response): number | undefined {
+    const field = response.headers.get("Retry-After");
     if (!field) return;
 
     const seconds = Number(field);

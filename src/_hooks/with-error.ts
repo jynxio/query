@@ -1,13 +1,13 @@
+import type { NormalizedFetch } from "../_types.ts";
+
 import { QueryError } from "../_error.ts";
 import { isAbortedError, isQueryError, isTimeoutError } from "../_misc/guards.ts";
 import { toError } from "../_misc/transformers.ts";
 
-function withError<Args extends unknown[], Res>(
-    fn: (...args: Args) => Promise<Res>,
-): (...args: Args) => Promise<Res> {
-    return async function (...args: Args): Promise<Res> {
+function withError(fn: NormalizedFetch): NormalizedFetch {
+    return async function (request) {
         try {
-            return await fn(...args);
+            return await fn(request);
         } catch (unknown) {
             if (isQueryError(unknown)) throw unknown;
             if (isTimeoutError(unknown)) throw new QueryError("timeout");

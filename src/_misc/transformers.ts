@@ -25,6 +25,7 @@ function toQueryError(i: unknown): QueryError {
  * @remarks
  * Node drops referrerPolicy with new Request(request).
  */
+// TODO: deprecated
 function toRequest(...args: FetchArgs): Request {
     if (isRequest(args[0]) && args[1] === undefined) return args[0];
 

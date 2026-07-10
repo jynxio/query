@@ -8,38 +8,40 @@ import { SchemaError } from "@standard-schema/utils";
  * @internal
  */
 class QueryResponse extends Response {
-    readonly clone: () => QueryResponse;
-    readonly json: {
-        (): Promise<JSONData>;
-        <T extends StandardSchemaV1>(schema: T): Promise<StandardSchemaV1.InferOutput<T>>;
-    };
+    static readonly cast = cast;
+    public readonly json = json;
+    public readonly clone = clone;
 
     constructor(...args: ConstructorParameters<typeof Response>) {
         super(...args);
         this.json = json;
         this.clone = clone;
-
-        function clone(this: QueryResponse): QueryResponse {
-            const response = Response.prototype.clone.call(this);
-
-            return Object.assign(response, { json, clone }) as QueryResponse;
-        }
-
-        function json(): Promise<JSONData>;
-        function json<T extends StandardSchemaV1>(schema: T): Promise<StandardSchemaV1.InferOutput<T>>;
-        async function json<T extends StandardSchemaV1>(
-            this: QueryResponse,
-            schema?: T,
-        ): Promise<JSONData | StandardSchemaV1.InferOutput<T>> {
-            const jsonData = (await Response.prototype.json.call(this)) as JSONData;
-            if (!schema) return jsonData;
-
-            const validatedJSONData = await schema["~standard"].validate(jsonData);
-            if (!validatedJSONData.issues) return validatedJSONData.value;
-
-            throw new QueryError("json", new SchemaError(validatedJSONData.issues));
-        }
     }
+}
+
+function cast(i: Response): QueryResponse {
+    return Object.assign(i, { json, clone });
+}
+
+function clone(this: QueryResponse): QueryResponse {
+    const response = Response.prototype.clone.call(this);
+
+    return Object.assign(response, { json, clone }) as QueryResponse;
+}
+
+function json(): Promise<JSONData>;
+function json<T extends StandardSchemaV1>(schema: T): Promise<StandardSchemaV1.InferOutput<T>>;
+async function json<T extends StandardSchemaV1>(
+    this: QueryResponse,
+    schema?: T,
+): Promise<JSONData | StandardSchemaV1.InferOutput<T>> {
+    const jsonData = (await Response.prototype.json.call(this)) as JSONData;
+    if (!schema) return jsonData;
+
+    const validatedJSONData = await schema["~standard"].validate(jsonData);
+    if (!validatedJSONData.issues) return validatedJSONData.value;
+
+    throw new QueryError("json", new SchemaError(validatedJSONData.issues));
 }
 
 export { QueryResponse };

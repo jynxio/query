@@ -1,4 +1,5 @@
-import type { JSONData, NormalizedFetch, Safe } from "../_types.ts";
+import type { JSONData, Safe } from "../_types.ts";
+import type { NormalizedFetch } from "../_types.ts";
 
 import { QueryError } from "../_error.ts";
 import { toJSON } from "../_misc/transformers.ts";

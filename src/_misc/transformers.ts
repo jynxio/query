@@ -1,7 +1,7 @@
-import type { FetchArgs, JSONData } from "../_types.ts";
+import type { JSONData } from "../_types.ts";
 
 import { QueryError } from "../_error.ts";
-import { isError, isRequest } from "./guards.ts";
+import { isError } from "./guards.ts";
 
 function toJSON(i: string): JSONData {
     return JSON.parse(i);
@@ -19,17 +19,4 @@ function toQueryError(i: unknown): QueryError {
     return new QueryError("unknown", toError(i));
 }
 
-/**
- * Keeps Request as-is when no init is given.
- *
- * @remarks
- * Node drops referrerPolicy with new Request(request).
- */
-// TODO: deprecated
-function toRequest(...args: FetchArgs): Request {
-    if (isRequest(args[0]) && args[1] === undefined) return args[0];
-
-    return new Request(...args);
-}
-
-export { toJSON, toError, toQueryError, toRequest };
+export { toJSON, toError, toQueryError };

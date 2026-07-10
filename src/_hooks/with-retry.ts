@@ -1,14 +1,14 @@
-import type { QueryFetch } from "../_types.ts";
-import type { QueryOpts } from "../_opts.ts";
-import type { QueryRequest } from "../_request.ts";
+import type { QueryOptions } from "../_options.ts";
 import type { QueryResponse } from "../_response.ts";
+import type { NormalizedFetch } from "../_types.ts";
+import type { QueryRequest } from "../_request.ts";
 
 import { isResponse } from "../_misc/guards.ts";
 import { isAbortedError, isTimeoutError } from "../_misc/guards.ts";
 import { QueryError } from "../_error.ts";
 import { sleep } from "../_misc/sleep.ts";
-import { withTimeout } from "./with-timeout.ts";
 import { withSafe } from "./with-safe.ts";
+import { withTimeout } from "./with-timeout.ts";
 
 const OVERALL_TIMEOUT_ERROR = new QueryError("timeout");
 const PER_ATTEMPT_TIMEOUT_ERROR = new QueryError("timeout");
@@ -16,30 +16,29 @@ const PER_ATTEMPT_TIMEOUT_ERROR = new QueryError("timeout");
 const wrapOverallTimeoutError = () => OVERALL_TIMEOUT_ERROR;
 const wrapAttemptTimeoutError = () => PER_ATTEMPT_TIMEOUT_ERROR;
 
-function withRetry(fn: QueryFetch, opts: Required<QueryOpts>): QueryFetch {
-    const duration = opts.overallTimeout;
-    const fnWithRetry: QueryFetch = async (request) => {
+function withRetry(fn: NormalizedFetch, options: Required<QueryOptions>): NormalizedFetch {
+    const duration = options.overallTimeout;
+    const wrapError = wrapOverallTimeoutError;
+
+    return withTimeout(fnWithRetry, { duration, wrapError });
+
+    async function fnWithRetry(request: QueryRequest): Promise<QueryResponse> {
         const attempt = createAttempter(request);
 
         for (;;) {
             const chunk = await attempt.next();
             if (chunk.done) return chunk.value;
         }
-    };
-    const fnWithTimeout = withTimeout(fnWithRetry, { duration, wrapError: wrapOverallTimeoutError });
-
-    return fnWithTimeout;
+    }
 
     async function* createAttempter(request: QueryRequest): AsyncGenerator<void, QueryResponse, void> {
         const startTime = performance.now();
-        const duration = opts.attemptTimeout;
-
-        const fnWithTimeout = withTimeout(fn, { duration, wrapError: wrapAttemptTimeoutError });
-        const fnWithSafe = withSafe(fnWithTimeout);
+        const duration = options.attemptTimeout;
+        const wrapError = wrapAttemptTimeoutError;
 
         for (let attemptNo = 1; ; attemptNo++) {
             const input = request.clone();
-            const either = await fnWithSafe(input);
+            const either = await withSafe(withTimeout(fn, { duration, wrapError }))(input);
             const output = either.ok ? either.data : either.error;
 
             yield;
@@ -53,14 +52,14 @@ function withRetry(fn: QueryFetch, opts: Required<QueryOpts>): QueryFetch {
                 if (isTriggerByUser) throw output;
             }
 
-            const prevAttempt = { no: attemptNo, input: input, output: output };
-            const retry = opts.retry(prevAttempt);
+            const prevAttempt = { no: attemptNo, input, output };
+            const retry = options.retry(prevAttempt);
 
-            if (!retry.should) return unwrap(output);
+            if (!retry.should) return unwrapError(output);
             if (isResponse(output)) output.body?.cancel().catch(() => {}); // Cancel body before retry.
 
             const elapsedTime = performance.now() - startTime;
-            const canRetry = elapsedTime + retry.delay < opts.overallTimeout;
+            const canRetry = elapsedTime + retry.delay < options.overallTimeout;
 
             if (!canRetry) throw new QueryError("timeout");
 
@@ -70,9 +69,9 @@ function withRetry(fn: QueryFetch, opts: Required<QueryOpts>): QueryFetch {
     }
 }
 
-function unwrap(i: Error): never;
-function unwrap<T>(i: T | Error): Exclude<T, Error>;
-function unwrap<T>(i: T | Error): Exclude<T, Error> {
+function unwrapError(i: Error): never;
+function unwrapError<T>(i: T | Error): Exclude<T, Error>;
+function unwrapError<T>(i: T | Error): Exclude<T, Error> {
     if (i instanceof Error) throw i;
 
     return i as Exclude<T, Error>;

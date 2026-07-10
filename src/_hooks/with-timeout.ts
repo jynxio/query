@@ -1,33 +1,35 @@
-import type { AbortableFetchLike } from "../_types.ts";
+import type { QueryResponse } from "../_response.ts";
+import type { QueryRequest } from "../_request.ts";
+import type { QueryPromise } from "../_promise.ts";
+import type { NormalizedFetch } from "../_types.ts";
 
 import { scheduleTask } from "../_misc/schedule-task.ts";
 import { QueryError } from "../_error.ts";
-import { QUERY_REQUEST_ABORT } from "../_consts.ts";
+import { withAbort } from "./with-abort.ts";
 
-/**
- * @todo
- * 给 QueryFetch 设定时间上限，达到上限后强制杀死，它是否可以结束 Network 里的 fetch，取决于 QueryRequest
- */
 function withTimeout(
-    fn: AbortableFetchLike,
-    opts: { duration: number; wrapError?: (i: QueryError<"timeout">) => Error },
-): AbortableFetchLike {
-    const hasNoTimeout = opts.duration === Number.POSITIVE_INFINITY;
+    fn: NormalizedFetch,
+    options: { duration: number; wrapError?: (i: QueryError<"timeout">) => Error },
+): NormalizedFetch {
+    const hasNoTimeout = options.duration === Number.POSITIVE_INFINITY;
     if (hasNoTimeout) return fn;
 
-    return async function (request: QueryRequest): Promise<QueryResponse> {
-        const handle = Promise.withResolvers<never>();
-        const cleanupTask = scheduleTask(timeoutTask, opts.duration);
-
-        return Promise.race([fn(request), handle.promise]).finally(cleanupTask);
-
-        function timeoutTask() {
-            const wrapError = opts.wrapError ?? ((i) => i);
+    return function (request: QueryRequest): QueryPromise<QueryResponse> {
+        const result = withAbort(fn)(request);
+        const cleanupTask = scheduleTask(() => {
+            const wrapError = options.wrapError ?? ((i) => i);
             const error = wrapError(new QueryError("timeout"));
 
-            handle.reject(error);
-            request[QUERY_REQUEST_ABORT](error);
-        }
+            /**
+             * In some cases, request.abort may intentionally have no effect. result.abort is the fallback for such
+             * cases, ensuring that query has terminated from the user's perspective even though the underlying fetch
+             * has not.
+             */
+            result.abort(error);
+            request.abort(error);
+        }, options.duration);
+
+        return result.promise.finally(cleanupTask);
     };
 }
 

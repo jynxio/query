@@ -1,33 +1,36 @@
-/**
- * @todo 润色
- * 根据 Fetch Spec，Request instance 在构造或克隆阶段就敲定了 signal 的内容并稳定的存储在内部，
- * fetch 始终都会使用 Request instance 的这个内部的 signal，哪怕你 override 了 Request instance
- * 的 signal 也没用。
- *
- * 如果 base 为 Request 且 Opts 为空，那么就不注入 ctrl.signal，否则新 Request 和 base 就会不等效。
- * 参见 [Fetch Spec - Fetch methods](https://fetch.spec.whatwg.org/#fetch-method)。
- *
- * https://fetch.spec.whatwg.org/#request-class
- * The new Request(input, init) constructor steps
- */
+import { isRequest } from "./_misc/guards.ts";
 
 /**
+ * A Request with built-in Abort support.
+ *
+ * @remarks
+ * In some cases, Abort does not work because the Signal it relies on is not injected into the final Request instance.
+ * This is intentional, because injecting it would make the original and new Request instances non-equivalent. See the
+ * Fetch Standard for details.
+ *
+ * @see {@link https://fetch.spec.whatwg.org/#fetch-method | The fetch(input, init) method steps are}
+ * @see {@link https://fetch.spec.whatwg.org/#request-class | The new Request(input, init) constructor steps}
+ *
  * @internal
  */
 class QueryRequest extends Request {
-    readonly isAbortable: boolean;
-    readonly clone: () => QueryRequest;
-    readonly abort: (reason?: unknown) => void;
+    public readonly isAbortable: boolean;
+    public readonly clone: () => QueryRequest;
+    public readonly abort: (reason?: unknown) => void;
 
-    constructor(...[base, opts]: ConstructorParameters<typeof Request>) {
-        const isBaseRequest = base instanceof Request;
-        const isOptsEmpty = Object.keys(opts ?? {}).length === 0;
-        const isAbortable = isBaseRequest === false || isOptsEmpty === false;
+    constructor(...[base, options]: ConstructorParameters<typeof Request>) {
+        const isBaseRequest = isRequest(base);
+        const isOptionsEmpty = Object.keys(options ?? {}).length === 0;
+        const isAbortable = isBaseRequest === false || isOptionsEmpty === false;
 
         const ctrl = new AbortController();
-        const newOpts = isAbortable ? { ...opts, signal: ctrl.signal } : opts;
+        const optsSignal = options?.signal;
+        const baseSignal = isBaseRequest ? base.signal : undefined;
+        const userSignal = optsSignal === undefined ? baseSignal : optsSignal;
+        const settledSignal = AbortSignal.any([userSignal ?? [], ctrl.signal].flat());
+        const settledOptions = isAbortable ? { ...options, signal: settledSignal } : options;
 
-        super(base, newOpts);
+        super(base, settledOptions);
         this.abort = abort;
         this.clone = clone;
         this.isAbortable = isAbortable;

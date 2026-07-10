@@ -1,6 +1,6 @@
 function createTextStream(
     text: string,
-    opts: {
+    options: {
         onCancel?: () => void;
         stayOpen?: boolean;
     } = {},
@@ -8,10 +8,10 @@ function createTextStream(
     return new ReadableStream<Uint8Array>({
         start(controller) {
             controller.enqueue(new TextEncoder().encode(text));
-            if (!opts.stayOpen) controller.close();
+            if (!options.stayOpen) controller.close();
         },
         cancel() {
-            opts.onCancel?.();
+            options.onCancel?.();
         },
     });
 }

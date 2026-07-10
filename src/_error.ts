@@ -1,16 +1,20 @@
-import type { SchematicRes } from "./_types.ts";
+import type { QueryPromise } from "./_promise.ts";
+import type { QueryResponse } from "./_response.ts";
+import type { JSONData } from "./_types.ts";
 
 import { SchemaError } from "@standard-schema/utils";
 
-type Inst = QueryError;
-type Ctor = typeof QueryError;
-type Cause = { unknown: unknown; timeout: never; abortion: never; json: JSONCause; http: HTTPCause };
-type JSONCause = SchemaError;
-type HTTPCause = {
-    statusCode: number;
-    statusText: string;
-    response: SchematicRes;
-    statusError: () => Promise<unknown>;
+type Cause = {
+    unknown: unknown;
+    timeout: never;
+    abortion: never;
+    json: SchemaError;
+    http: {
+        statusCode: number;
+        statusText: string;
+        response: QueryResponse;
+        statusError: (signal?: AbortSignal) => QueryPromise<JSONData>;
+    };
 };
 
 class QueryError<T extends keyof Cause = keyof Cause> extends Error {
@@ -24,4 +28,4 @@ class QueryError<T extends keyof Cause = keyof Cause> extends Error {
 }
 
 export { QueryError };
-export type { Cause as QueryErrorCause, Inst as QueryErrorInst, Ctor as QueryErrorCtor };
+export type { Cause as QueryErrorCause };

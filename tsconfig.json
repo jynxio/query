@@ -1,12 +1,12 @@
 {
     "compilerOptions": {
         "target": "esnext",
-        "lib": ["esnext", "dom", "dom.iterable"],
+        "lib": ["esnext", "dom", "dom.iterable", "dom.asynciterable"],
         "moduleDetection": "force",
         "module": "nodenext",
         "moduleResolution": "nodenext",
         "resolveJsonModule": true,
-        "types": ["node"],
+        "types": [],
         "strict": true,
         "noUnusedLocals": true,
         "declaration": true,
@@ -16,5 +16,6 @@
         "isolatedModules": true,
         "verbatimModuleSyntax": true,
         "skipLibCheck": true
-    }
+    },
+    "include": ["src/**/*.ts", "test/**/*.ts"]
 }

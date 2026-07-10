@@ -1,27 +1,27 @@
-import type { SchematicRes } from "./_types.ts";
+import type { QueryResponse } from "./_response.ts";
 import type { QueryError } from "./_error.ts";
 
 import { isError } from "./_misc/guards.ts";
 
-type Opts = {
+type Options = {
     /**
      * Max time for one try.
      *
      * @defaultValue 10_000
      */
-    attemptTimeout: number;
+    readonly attemptTimeout: number;
     /**
      * Max time for the whole call.
      *
      * @defaultValue Number.POSITIVE_INFINITY
      */
-    overallTimeout: number;
+    readonly overallTimeout: number;
     /**
      * Decides the next try.
      *
      * @defaultValue Retry twice for safe methods and selected status codes.
      */
-    retry: (prevAttempt: {
+    readonly retry: (prevAttempt: {
         /**
          * Try number. Starts at 1.
          */
@@ -33,14 +33,14 @@ type Opts = {
         /**
          * Previous output.
          */
-        readonly output: SchematicRes | QueryError;
+        readonly output: QueryResponse | QueryError;
     }) => Readonly<{ should: false } | { should: true; delay: number }>;
 };
 
 const RETRY_COUNT = 2;
 const RETRY_STATUS = new Set([408, 413, 429, 500, 502, 503, 504]);
 const RETRY_METHOD = new Set(["get", "put", "head", "delete", "options", "trace"]);
-const OPTS = { retry, attemptTimeout: 10_000, overallTimeout: Number.POSITIVE_INFINITY } satisfies Opts;
+const OPTIONS = { retry, attemptTimeout: 10_000, overallTimeout: Number.POSITIVE_INFINITY } satisfies Options;
 
 /**
  * Default retry.
@@ -53,7 +53,7 @@ const OPTS = { retry, attemptTimeout: 10_000, overallTimeout: Number.POSITIVE_IN
 function retry(prevAttempt: {
     readonly no: number;
     readonly input: Request;
-    readonly output: Error | SchematicRes;
+    readonly output: Error | QueryResponse;
 }): Readonly<{ should: false } | { should: true; delay: number }> {
     const attemptCountSoFar = prevAttempt.no;
     if (attemptCountSoFar > RETRY_COUNT) return { should: false };
@@ -84,5 +84,5 @@ function parseRetryAfterField(response: Response): number | undefined {
     if (Number.isFinite(date)) return Math.max(0, date - Date.now());
 }
 
-export { OPTS as QUERY_OPTS };
-export type { Opts as QueryOpts };
+export { OPTIONS as DEFAULT_QUERY_OPTIONS };
+export type { Options as QueryOptions };

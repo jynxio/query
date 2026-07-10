@@ -1,5 +1,7 @@
 # Testing
 
+<!-- TODO(i18n): Translate the remaining Chinese documentation to English. -->
+
 只测 Query 自己改过的行为。
 
 不测 Query 是否和 Fetch 完全一样。这个承诺先靠源码足够小、人工 review、类型定义和后续维护来保证。
@@ -68,7 +70,7 @@
 
 ### Abort normalization
 
-- `fetch`：抛原始 abort / timeout reason
+- `fetch`：抛原始 abort / timeout cause
 - `query`：归一成 `Query.Error("abortion")` 或 `Query.Error("timeout")`
 - 需要测：
     - 用户传入的 `signal` 真的传入内部 fetch
@@ -113,9 +115,9 @@
 
 ### Types
 
-- `then` / `catch` 的 error 类型是 `Query.Error`
+- `then` / `catch` 的 error 类型始终是 `unknown`
 - `safe()` 能正确 narrow
-- `QueryType` 暴露 public API 类型
+- 公共类型从 `Query`、`query` 和 `Query.Error` 推导，不额外导出聚合类型
 - 需要测：
     - `then(onResolved)` 的返回值成为下一层 `then` 的入参
     - `then(onRejected)` 的返回值参与下一层 `then` 的入参

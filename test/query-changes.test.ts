@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, test, vi } from "vite-plus/test";
 
-import { Query, type QueryType } from "../src/index.ts";
+import type { QueryErrorCause } from "../src/_error.ts";
+
+import { Query } from "../src/index.ts";
 import { createSchema } from "./helpers/schema.ts";
 import { createTextStream } from "./helpers/stream.ts";
 
@@ -24,11 +26,21 @@ async function captureQueryError(promise: unknown): Promise<InstanceType<typeof 
     throw new Error("Expected Query.Error to be thrown");
 }
 
-function getHTTPDetails(error: InstanceType<typeof Query.Error>): QueryType["ErrorCause"]["http"] {
+function getHTTPDetails(error: InstanceType<typeof Query.Error>): QueryErrorCause["http"] {
     expect(error.cause.type).toBe("http");
 
-    return error.cause.details as QueryType["ErrorCause"]["http"];
+    return error.cause.details as QueryErrorCause["http"];
 }
+
+describe("Public API", () => {
+    test("Constructs a callable query with safe mode", () => {
+        const query = new Query();
+
+        expect(query).toBeTypeOf("function");
+        expect(query.safe).toBeTypeOf("function");
+        expect(Query.Error).toBeTypeOf("function");
+    });
+});
 
 describe("Non-2xx errors", () => {
     test("Throw Query.Error with lazy statusError", async () => {
@@ -175,7 +187,7 @@ describe("Timeout and abort", () => {
         mockFetch(pendingFetch);
         const query = new Query();
 
-        const promise = query("https://example.com/timeout-reason", { signal: controller.signal });
+        const promise = query("https://example.com/timeout-cause", { signal: controller.signal });
         await Promise.resolve();
         controller.abort(new DOMException("Timeout", "TimeoutError"));
 

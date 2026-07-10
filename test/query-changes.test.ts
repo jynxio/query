@@ -179,7 +179,7 @@ describe("Timeout and abort", () => {
         await Promise.resolve();
         controller.abort(new DOMException("Abort", "AbortError"));
 
-        await expect(promise).rejects.toMatchObject({ cause: { type: "abortion" } });
+        await expect(promise).rejects.toMatchObject({ cause: { type: "abort" } });
     });
 
     test("Normalizes user TimeoutError", async () => {

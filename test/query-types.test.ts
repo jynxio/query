@@ -34,7 +34,7 @@ describe("Query types", () => {
             );
 
             new Query.Error("timeout");
-            new Query.Error("abortion");
+            new Query.Error("abort");
             new Query.Error("unknown", new Error("unknown"));
             new Query.Error("http", {
                 response: {} as QueryResponse,

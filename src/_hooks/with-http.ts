@@ -23,10 +23,7 @@ function withHTTP(fn: NormalizedFetch): NormalizedFetch {
                 if (statusErrorHandle.ok) return statusErrorHandle.data;
 
                 let text = "";
-                for await (const chunk of createStringifier(clonedResponse)) {
-                    if (signal?.aborted) throw new QueryError("abortion");
-                    text += chunk;
-                }
+                for await (const chunk of createStringifier(clonedResponse, signal)) text += chunk;
 
                 const contentType = clonedResponse.headers.get("content-type") ?? "";
                 const mimeType = (contentType.split(";", 1)[0] ?? "").trim().toLowerCase();
@@ -40,11 +37,14 @@ function withHTTP(fn: NormalizedFetch): NormalizedFetch {
     };
 }
 
-async function* createStringifier(response: Response): AsyncGenerator<string, void, void> {
+async function* createStringifier(
+    response: Response,
+    signal?: AbortSignal,
+): AsyncGenerator<string, void, void> {
     const rawStream = response.body;
     if (!rawStream) return yield await response.text();
 
-    const textStream = rawStream.pipeThrough(new TextDecoderStream());
+    const textStream = rawStream.pipeThrough(new TextDecoderStream(), { signal });
     for await (const chunk of textStream) yield chunk;
 }
 

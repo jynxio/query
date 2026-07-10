@@ -9,7 +9,7 @@ import { withError } from "./_hooks/with-error.ts";
 import { withSafe } from "./_hooks/with-safe.ts";
 import { QueryResponse } from "./_response.ts";
 import { withExternalize, withInternalize } from "./_hooks/with-transform.ts";
-import { withPipe } from "./_hooks/with-pipe.ts";
+import { pipe } from "./_misc/pipe.ts";
 import { QueryError } from "./_error.ts";
 
 type QueryCall<Result> = {
@@ -44,7 +44,7 @@ const Query = class {
         return Object.assign(baseQuery, { safe: safeQuery });
 
         function baseQuery(...args: Parameters<GlobalThisFetch>): QueryPromise<QueryResponse> {
-            cache.baseQuery ??= withPipe(settledFn)
+            cache.baseQuery ??= pipe(settledFn)
                 .next(withInternalize)
                 .next(withError)
                 .next((i) => withRetry(i, settledOptions))
@@ -59,7 +59,7 @@ const Query = class {
         function safeQuery(
             ...args: Parameters<GlobalThisFetch>
         ): QueryPromise<Safe<QueryResponse, QueryError>> {
-            cache.safeQuery ??= withPipe(settledFn)
+            cache.safeQuery ??= pipe(settledFn)
                 .next(withInternalize)
                 .next(withError)
                 .next((i) => withRetry(i, settledOptions))

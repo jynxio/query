@@ -3,7 +3,7 @@ type PipeObject<Prev> = {
     next<Next>(fn: (i: Prev) => Next): PipeObject<Next>;
 };
 
-function withPipe<T>(source: T): PipeObject<T> {
+function pipe<T>(source: T): PipeObject<T> {
     return { next, done };
 
     function done(): T {
@@ -11,8 +11,8 @@ function withPipe<T>(source: T): PipeObject<T> {
     }
 
     function next<Next>(fn: (i: T) => Next): PipeObject<Next> {
-        return withPipe(fn(source));
+        return pipe(fn(source));
     }
 }
 
-export { withPipe };
+export { pipe };

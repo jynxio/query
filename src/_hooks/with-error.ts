@@ -11,7 +11,7 @@ function withError(fn: NormalizedFetch): NormalizedFetch {
         } catch (unknown) {
             if (isQueryError(unknown)) throw unknown;
             if (isTimeoutError(unknown)) throw new QueryError("timeout");
-            if (isAbortedError(unknown)) throw new QueryError("abortion");
+            if (isAbortedError(unknown)) throw new QueryError("abort");
 
             throw new QueryError("unknown", toError(unknown));
         }

@@ -58,14 +58,14 @@ function retry(prevAttempt: {
     const attemptCountSoFar = prevAttempt.no;
     if (attemptCountSoFar > RETRY_COUNT) return { should: false };
 
-    const isMetMethod = RETRY_METHOD.has(prevAttempt.input.method.toLowerCase());
-    if (!isMetMethod) return { should: false };
+    const isRetryableMethod = RETRY_METHOD.has(prevAttempt.input.method.toLowerCase());
+    if (!isRetryableMethod) return { should: false };
 
     const localDelay = 300 * 2 ** (attemptCountSoFar - 1);
     if (isError(prevAttempt.output)) return { should: true, delay: localDelay };
 
-    const isMetStatus = RETRY_STATUS.has(prevAttempt.output.status);
-    if (!isMetStatus) return { should: false };
+    const isRetryableStatus = RETRY_STATUS.has(prevAttempt.output.status);
+    if (!isRetryableStatus) return { should: false };
 
     const remoteDelay = parseRetryAfterField(prevAttempt.output);
     if (remoteDelay === undefined) return { should: true, delay: localDelay };

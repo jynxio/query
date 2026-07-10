@@ -19,7 +19,7 @@ function withHTTP(fn: NormalizedFetch): NormalizedFetch {
             statusCode: response.status,
             statusText: response.statusText,
             statusError: async (signal?: AbortSignal): Promise<JSONData> => {
-                if (signal?.aborted) throw new QueryError("abortion");
+                if (signal?.aborted) throw new QueryError("abort");
                 if (statusErrorHandle.ok) return statusErrorHandle.data;
 
                 let text = "";

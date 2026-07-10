@@ -7,7 +7,7 @@ import { SchemaError } from "@standard-schema/utils";
 type Cause = {
     unknown: unknown;
     timeout: never;
-    abortion: never;
+    abort: never;
     json: SchemaError;
     http: {
         statusCode: number;

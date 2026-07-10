@@ -11,30 +11,30 @@ import { withSafe } from "./with-safe.ts";
 import { withTimeout } from "./with-timeout.ts";
 
 const OVERALL_TIMEOUT_ERROR = new QueryError("timeout");
-const PER_ATTEMPT_TIMEOUT_ERROR = new QueryError("timeout");
+const ATTEMPT_TIMEOUT_ERROR = new QueryError("timeout");
 
-const wrapOverallTimeoutError = () => OVERALL_TIMEOUT_ERROR;
-const wrapAttemptTimeoutError = () => PER_ATTEMPT_TIMEOUT_ERROR;
+const toOverallTimeout = () => OVERALL_TIMEOUT_ERROR;
+const toAttemptTimeout = () => ATTEMPT_TIMEOUT_ERROR;
 
 function withRetry(fn: NormalizedFetch, options: Required<QueryOptions>): NormalizedFetch {
     const duration = options.overallTimeout;
-    const wrapError = wrapOverallTimeoutError;
+    const wrapError = toOverallTimeout;
 
     return withTimeout(fnWithRetry, { duration, wrapError });
 
     async function fnWithRetry(request: QueryRequest): Promise<QueryResponse> {
-        const attempt = createAttempter(request);
+        const attempts = createAttempts(request);
 
         for (;;) {
-            const chunk = await attempt.next();
+            const chunk = await attempts.next();
             if (chunk.done) return chunk.value;
         }
     }
 
-    async function* createAttempter(request: QueryRequest): AsyncGenerator<void, QueryResponse, void> {
+    async function* createAttempts(request: QueryRequest): AsyncGenerator<void, QueryResponse, void> {
         const startTime = performance.now();
         const duration = options.attemptTimeout;
-        const wrapError = wrapAttemptTimeoutError;
+        const wrapError = toAttemptTimeout;
 
         for (let attemptNo = 1; ; attemptNo++) {
             const input = request.clone();
@@ -44,13 +44,9 @@ function withRetry(fn: NormalizedFetch, options: Required<QueryOptions>): Normal
             yield;
 
             if (isAbortedError(output)) throw output;
-            if (isTimeoutError(output)) {
-                const isTriggerByOverall = output === OVERALL_TIMEOUT_ERROR;
-                if (isTriggerByOverall) throw output;
 
-                const isTriggerByUser = output !== PER_ATTEMPT_TIMEOUT_ERROR;
-                if (isTriggerByUser) throw output;
-            }
+            const isAttemptTimeout = isTimeoutError(output) && output === ATTEMPT_TIMEOUT_ERROR;
+            if (isAttemptTimeout) throw output;
 
             const prevAttempt = { no: attemptNo, input, output };
             const retry = options.retry(prevAttempt);

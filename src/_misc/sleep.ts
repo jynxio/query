@@ -2,7 +2,7 @@ import { QueryError } from "../_error.ts";
 import { scheduleTask } from "./schedule-task.ts";
 
 function sleep(duration: number, signal?: AbortSignal): Promise<void> {
-    if (signal?.aborted) return Promise.reject(new QueryError("abortion"));
+    if (signal?.aborted) return Promise.reject(new QueryError("abort"));
 
     const handle = Promise.withResolvers<void>();
     const cancelResolve = scheduleTask(resolve, duration);
@@ -13,7 +13,7 @@ function sleep(duration: number, signal?: AbortSignal): Promise<void> {
 
     function reject() {
         cancelResolve();
-        handle.reject(new QueryError("abortion"));
+        handle.reject(new QueryError("abort"));
     }
 
     function resolve() {

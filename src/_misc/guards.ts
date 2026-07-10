@@ -20,7 +20,7 @@ function isTimeoutError(i: unknown): boolean {
 
 function isAbortedError(i: unknown): boolean {
     if (isError(i) && i.name === ABORT_ERROR_NAME) return true;
-    if (i instanceof QueryError && i.cause.type === "abortion") return true;
+    if (i instanceof QueryError && i.cause.type === "abort") return true;
 
     return false;
 }

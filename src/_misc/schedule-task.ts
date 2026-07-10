@@ -3,7 +3,7 @@ const MAX_TIMEOUT = 2_147_483_647;
 
 function scheduleTask(task: () => void, timeout: number): () => void {
     if (timeout < MIN_TIMEOUT) throw new RangeError(`"timeout" must be >= ${MIN_TIMEOUT}`);
-    if (timeout >= MAX_TIMEOUT) throw new RangeError(`"timeout" must be <= ${MAX_TIMEOUT}`);
+    if (timeout > MAX_TIMEOUT) throw new RangeError(`"timeout" must be <= ${MAX_TIMEOUT}`);
 
     /**
      * Via settimeout API.

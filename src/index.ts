@@ -34,16 +34,20 @@ const Query = class {
         type Cache = { baseQuery?: BaseQuery; safeQuery?: SafeQuery };
 
         const cache: Cache = {};
-        const resolvedFn = fn ?? globalThis.fetch;
-        const resolvedOptions = { ...DEFAULT_QUERY_OPTIONS, ...options } satisfies QueryOptions;
+        const settledFn = fn ?? globalThis.fetch;
+        const settledOptions = {
+            attemptTimeout: options?.attemptTimeout ?? DEFAULT_QUERY_OPTIONS.attemptTimeout,
+            overallTimeout: options?.overallTimeout ?? DEFAULT_QUERY_OPTIONS.overallTimeout,
+            retry: options?.retry ?? DEFAULT_QUERY_OPTIONS.retry,
+        } satisfies QueryOptions;
 
         return Object.assign(baseQuery, { safe: safeQuery });
 
         function baseQuery(...args: Parameters<GlobalthisFetch>): QueryPromise<QueryResponse> {
-            cache.baseQuery ??= withPipe(resolvedFn)
+            cache.baseQuery ??= withPipe(settledFn)
                 .next(withInternalize)
                 .next(withError)
-                .next((i) => withRetry(i, resolvedOptions))
+                .next((i) => withRetry(i, settledOptions))
                 .next(withHTTP)
                 .next(withError)
                 .next(withExternalize)
@@ -55,10 +59,10 @@ const Query = class {
         function safeQuery(
             ...args: Parameters<GlobalthisFetch>
         ): QueryPromise<Safe<QueryResponse, QueryError>> {
-            cache.safeQuery ??= withPipe(resolvedFn)
+            cache.safeQuery ??= withPipe(settledFn)
                 .next(withInternalize)
                 .next(withError)
-                .next((i) => withRetry(i, resolvedOptions))
+                .next((i) => withRetry(i, settledOptions))
                 .next(withHTTP)
                 .next(withError)
                 .next(withExternalize)

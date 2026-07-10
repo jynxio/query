@@ -6,7 +6,7 @@ type QueryPromiseSettledResult<T> = QueryPromiseFulfilledResult<T> | QueryPromis
 type QueryPromiseWithResolvers<T> = {
     promise: QueryPromise<T>;
     reject: (reason?: unknown) => void;
-    resolve: (response: T | PromiseLike<T>) => void;
+    resolve: (value: T | PromiseLike<T>) => void;
 };
 
 type QueryPromiseConstructor = TypedOmit<
@@ -48,8 +48,8 @@ type QueryPromiseConstructor = TypedOmit<
 
     // resolve
     resolve(): QueryPromise<void>;
-    resolve<T>(response: T): QueryPromise<Awaited<T>>;
-    resolve<T>(response: T | PromiseLike<T>): QueryPromise<Awaited<T>>;
+    resolve<T>(value: T): QueryPromise<Awaited<T>>;
+    resolve<T>(value: T | PromiseLike<T>): QueryPromise<Awaited<T>>;
 
     // try
     try<T, Args extends unknown[]>(
@@ -63,7 +63,7 @@ type QueryPromiseConstructor = TypedOmit<
 
 type QueryPromise<T> = TypedOmit<Promise<T>, "then" | "catch" | "finally"> & {
     then<Result = T, Fallback = never>(
-        onFulfilled?: ((response: T) => Result | PromiseLike<Result>) | null,
+        onFulfilled?: ((value: T) => Result | PromiseLike<Result>) | null,
         onRejected?: ((reason: unknown) => Fallback | PromiseLike<Fallback>) | null,
     ): QueryPromise<Result | Fallback>;
 

@@ -1,22 +1,22 @@
-import type { GlobalthisFetch, NormalizedFetch } from "../_types.ts";
+import type { GlobalThisFetch, NormalizedFetch } from "../_types.ts";
 import type { QueryPromise } from "../_promise.ts";
 
 import { QueryRequest } from "../_request.ts";
 import { QueryResponse } from "../_response.ts";
 
-function withInternalize(fn: GlobalthisFetch): NormalizedFetch {
+function withInternalize(fn: GlobalThisFetch): NormalizedFetch {
     return normalizeFetch(fn);
 }
 
 function withExternalize(
     fn: NormalizedFetch,
-): (...args: Parameters<GlobalthisFetch>) => QueryPromise<QueryResponse> {
-    return function (...args: Parameters<GlobalthisFetch>): QueryPromise<QueryResponse> {
+): (...args: Parameters<GlobalThisFetch>) => QueryPromise<QueryResponse> {
+    return function (...args: Parameters<GlobalThisFetch>): QueryPromise<QueryResponse> {
         return fn(new QueryRequest(...args));
     };
 }
 
-function normalizeFetch(fn: GlobalthisFetch): NormalizedFetch {
+function normalizeFetch(fn: GlobalThisFetch): NormalizedFetch {
     return async function (request: QueryRequest) {
         return QueryResponse.cast(await fn(request));
     };

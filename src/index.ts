@@ -1,6 +1,6 @@
 import type { QueryOptions } from "./_options.ts";
 import type { QueryPromise } from "./_promise.ts";
-import type { GlobalthisFetch, Safe } from "./_types.ts";
+import type { GlobalThisFetch, Safe } from "./_types.ts";
 
 import { DEFAULT_QUERY_OPTIONS } from "./_options.ts";
 import { withRetry } from "./_hooks/with-retry.ts";
@@ -17,20 +17,20 @@ type QueryCall<Result> = {
      * @deprecated It's supported but not recommended.
      */
     (input: Request, init?: Record<PropertyKey, never>): QueryPromise<Result>;
-    (input: Parameters<GlobalthisFetch>[0], init?: Parameters<GlobalthisFetch>[1]): QueryPromise<Result>;
+    (input: Parameters<GlobalThisFetch>[0], init?: Parameters<GlobalThisFetch>[1]): QueryPromise<Result>;
 };
 type Query = BaseQuery & { safe: SafeQuery };
 type BaseQuery = QueryCall<QueryResponse>;
 type SafeQuery = QueryCall<Safe<QueryResponse, QueryError>>;
 type QueryConstructor = {
-    new (options?: Partial<QueryOptions>, fn?: GlobalthisFetch): Query;
+    new (options?: Partial<QueryOptions>, fn?: GlobalThisFetch): Query;
     Error: typeof QueryError;
 };
 
 const Query = class {
     static readonly Error: typeof QueryError = QueryError;
 
-    constructor(options?: Partial<QueryOptions>, fn?: GlobalthisFetch) {
+    constructor(options?: Partial<QueryOptions>, fn?: GlobalThisFetch) {
         type Cache = { baseQuery?: BaseQuery; safeQuery?: SafeQuery };
 
         const cache: Cache = {};
@@ -43,7 +43,7 @@ const Query = class {
 
         return Object.assign(baseQuery, { safe: safeQuery });
 
-        function baseQuery(...args: Parameters<GlobalthisFetch>): QueryPromise<QueryResponse> {
+        function baseQuery(...args: Parameters<GlobalThisFetch>): QueryPromise<QueryResponse> {
             cache.baseQuery ??= withPipe(settledFn)
                 .next(withInternalize)
                 .next(withError)
@@ -57,7 +57,7 @@ const Query = class {
         }
 
         function safeQuery(
-            ...args: Parameters<GlobalthisFetch>
+            ...args: Parameters<GlobalThisFetch>
         ): QueryPromise<Safe<QueryResponse, QueryError>> {
             cache.safeQuery ??= withPipe(settledFn)
                 .next(withInternalize)

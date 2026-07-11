@@ -39,8 +39,11 @@ function withRetry(fn: NormalizedFetch, options: Required<QueryOptions>): Normal
              *       - Abort（来自整体超时）：throw
              *       - 用户 Abort：throw
              */
-            const isAttemptTimeout = output === ATTEMPT_TIMEOUT_ERROR;
-            if (!isAttemptTimeout) throw output;
+            const isOverallTimeout = output === OVERALL_TIMEOUT_ERROR;
+            if (isOverallTimeout) throw output;
+
+            const isUserAborted = input.signal.aborted && output !== ATTEMPT_TIMEOUT_ERROR;
+            if (isUserAborted) throw output;
 
             const prevAttempt = { no: attemptNo, input, output };
             const retry = options.retry(prevAttempt);
@@ -52,7 +55,7 @@ function withRetry(fn: NormalizedFetch, options: Required<QueryOptions>): Normal
             const canRetry = elapsedTime + retry.delay < options.overallTimeout;
 
             if (!canRetry) throw new QueryError("timeout");
-            await sleep(retry.delay, input.signal);
+            await sleep(retry.delay, request.signal);
         }
     }
 }

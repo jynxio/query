@@ -12,19 +12,16 @@ import { withTimeout } from "./with-timeout.ts";
 const OVERALL_TIMEOUT_ERROR = new QueryError("timeout");
 const ATTEMPT_TIMEOUT_ERROR = new QueryError("timeout");
 
-const toOverallTimeout = () => OVERALL_TIMEOUT_ERROR;
-const toAttemptTimeout = () => ATTEMPT_TIMEOUT_ERROR;
-
 function withRetry(fn: NormalizedFetch, options: Required<QueryOptions>): NormalizedFetch {
     const duration = options.overallTimeout;
-    const wrapError = toOverallTimeout;
+    const wrapError = () => OVERALL_TIMEOUT_ERROR;
 
     return withTimeout(fnWithRetry, { duration, wrapError });
 
     async function fnWithRetry(request: QueryRequest): Promise<QueryResponse> {
-        const wrapError = toAttemptTimeout;
         const startTime = performance.now();
         const duration = options.attemptTimeout;
+        const wrapError = () => ATTEMPT_TIMEOUT_ERROR;
 
         for (let attemptNo = 1; ; attemptNo++) {
             const input = request.clone();

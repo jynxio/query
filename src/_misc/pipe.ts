@@ -1,6 +1,9 @@
-type PipeObject<Prev> = {
-    done(): Prev;
-    next<Next>(fn: (i: Prev) => Next): PipeObject<Next>;
+type PipeObject<Source> = {
+    done(): Source;
+    next<Next, Args extends unknown[]>(
+        fn: (...args: [Source, ...Args]) => Next,
+        ...args: Args
+    ): PipeObject<Next>;
 };
 
 function pipe<T>(source: T): PipeObject<T> {
@@ -10,8 +13,11 @@ function pipe<T>(source: T): PipeObject<T> {
         return source;
     }
 
-    function next<Next>(fn: (i: T) => Next): PipeObject<Next> {
-        return pipe(fn(source));
+    function next<Next, Args extends unknown[]>(
+        fn: (...args: [T, ...Args]) => Next,
+        ...args: Args
+    ): PipeObject<Next> {
+        return pipe(fn(source, ...args));
     }
 }
 

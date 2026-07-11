@@ -45,7 +45,7 @@ const Query = class {
         function baseQuery(...args: Parameters<GlobalThisFetch>): QueryPromise<QueryResponse> {
             cache.baseQuery ??= pipe(settledFn)
                 .next(withInternalize)
-                .next((i) => withRetry(i, settledOptions))
+                .next(withRetry, settledOptions)
                 .next(withHTTP)
                 .next(withExternalize)
                 .done();
@@ -56,7 +56,7 @@ const Query = class {
         function safeQuery(...args: Parameters<GlobalThisFetch>): QueryPromise<Safe<QueryResponse, Error>> {
             cache.safeQuery ??= pipe(settledFn)
                 .next(withInternalize)
-                .next((i) => withRetry(i, settledOptions))
+                .next(withRetry, settledOptions)
                 .next(withHTTP)
                 .next(withExternalize)
                 .next(withSafe)

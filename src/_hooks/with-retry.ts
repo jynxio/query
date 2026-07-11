@@ -4,7 +4,6 @@ import type { NormalizedFetch } from "../_types.ts";
 import type { QueryRequest } from "../_request.ts";
 
 import { isResponse } from "../_misc/guards.ts";
-import { isAbortedError, isTimeoutError } from "../_misc/guards.ts";
 import { QueryError } from "../_error.ts";
 import { sleep } from "../_misc/sleep.ts";
 import { withSafe } from "./with-safe.ts";
@@ -23,30 +22,28 @@ function withRetry(fn: NormalizedFetch, options: Required<QueryOptions>): Normal
     return withTimeout(fnWithRetry, { duration, wrapError });
 
     async function fnWithRetry(request: QueryRequest): Promise<QueryResponse> {
-        const attempts = createAttempts(request);
-
-        for (;;) {
-            const chunk = await attempts.next();
-            if (chunk.done) return chunk.value;
-        }
-    }
-
-    async function* createAttempts(request: QueryRequest): AsyncGenerator<void, QueryResponse, void> {
+        const wrapError = toAttemptTimeout;
         const startTime = performance.now();
         const duration = options.attemptTimeout;
-        const wrapError = toAttemptTimeout;
 
         for (let attemptNo = 1; ; attemptNo++) {
             const input = request.clone();
             const either = await withSafe(withTimeout(fn, { duration, wrapError }))(input);
             const output = either.ok ? either.data : either.error;
 
-            yield;
-
-            if (isAbortedError(output)) throw output;
-
-            const isAttemptTimeout = isTimeoutError(output) && output === ATTEMPT_TIMEOUT_ERROR;
-            if (isAttemptTimeout) throw output;
+            /**
+             * Attempt 规则：
+             *   - output 成功：options.retry
+             *   - output 异常：
+             *     - 同步异常：throw
+             *     - 异步异常：
+             *       - 请求失败：options.retry
+             *       - Abort（来自单次超时）：options.retry
+             *       - Abort（来自整体超时）：throw
+             *       - 用户 Abort：throw
+             */
+            const isAttemptTimeout = output === ATTEMPT_TIMEOUT_ERROR;
+            if (!isAttemptTimeout) throw output;
 
             const prevAttempt = { no: attemptNo, input, output };
             const retry = options.retry(prevAttempt);
@@ -58,9 +55,7 @@ function withRetry(fn: NormalizedFetch, options: Required<QueryOptions>): Normal
             const canRetry = elapsedTime + retry.delay < options.overallTimeout;
 
             if (!canRetry) throw new QueryError("timeout");
-
             await sleep(retry.delay, input.signal);
-            yield;
         }
     }
 }

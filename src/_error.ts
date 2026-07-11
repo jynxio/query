@@ -6,8 +6,8 @@ import { SchemaError } from "@standard-schema/utils";
 
 type Cause = {
     unknown: unknown;
-    timeout: never;
-    abort: never;
+    timeout: unknown;
+    abort: unknown;
     json: SchemaError;
     http: {
         statusCode: number;
@@ -21,7 +21,7 @@ class QueryError<T extends keyof Cause = keyof Cause> extends Error {
     declare name: "QueryError";
     declare cause: { type: T; details: Cause[T] };
 
-    constructor(...[type, details]: Cause[T] extends never ? [T] : [T, Cause[T]]) {
+    constructor(...[type, details]: unknown extends Cause[T] ? [T, details?: unknown] : [T, Cause[T]]) {
         super(undefined, { cause: { type, details } });
         this.name = "QueryError";
     }

@@ -5,7 +5,6 @@ import type { GlobalThisFetch, Safe } from "./_types.ts";
 import { DEFAULT_QUERY_OPTIONS } from "./_options.ts";
 import { withRetry } from "./_hooks/with-retry.ts";
 import { withHTTP } from "./_hooks/with-http.ts";
-import { withError } from "./_hooks/with-error.ts";
 import { withSafe } from "./_hooks/with-safe.ts";
 import { QueryResponse } from "./_response.ts";
 import { withExternalize, withInternalize } from "./_hooks/with-transform.ts";
@@ -21,7 +20,7 @@ type QueryCall<Result> = {
 };
 type Query = BaseQuery & { safe: SafeQuery };
 type BaseQuery = QueryCall<QueryResponse>;
-type SafeQuery = QueryCall<Safe<QueryResponse, QueryError>>;
+type SafeQuery = QueryCall<Safe<QueryResponse, Error>>;
 type QueryConstructor = {
     new (options?: Partial<QueryOptions>, fn?: GlobalThisFetch): Query;
     Error: typeof QueryError;
@@ -46,25 +45,19 @@ const Query = class {
         function baseQuery(...args: Parameters<GlobalThisFetch>): QueryPromise<QueryResponse> {
             cache.baseQuery ??= pipe(settledFn)
                 .next(withInternalize)
-                .next(withError)
                 .next((i) => withRetry(i, settledOptions))
                 .next(withHTTP)
-                .next(withError)
                 .next(withExternalize)
                 .done();
 
             return cache.baseQuery(...args);
         }
 
-        function safeQuery(
-            ...args: Parameters<GlobalThisFetch>
-        ): QueryPromise<Safe<QueryResponse, QueryError>> {
+        function safeQuery(...args: Parameters<GlobalThisFetch>): QueryPromise<Safe<QueryResponse, Error>> {
             cache.safeQuery ??= pipe(settledFn)
                 .next(withInternalize)
-                .next(withError)
                 .next((i) => withRetry(i, settledOptions))
                 .next(withHTTP)
-                .next(withError)
                 .next(withExternalize)
                 .next(withSafe)
                 .done();

@@ -2,7 +2,6 @@ import type { JSONData } from "../_types.ts";
 import type { NormalizedFetch } from "../_types.ts";
 
 import { QueryError } from "../_error.ts";
-import { toJSON } from "../_misc/transformers.ts";
 
 function withHTTP(fn: NormalizedFetch): NormalizedFetch {
     return async function (request) {
@@ -34,7 +33,7 @@ async function createStateError(response: Response, signal?: AbortSignal): Promi
 
     const contentType = response.headers.get("content-type") ?? "";
     const mimeType = (contentType.split(";", 1)[0] ?? "").trim().toLowerCase();
-    const data = /\/(?:.*[.+-])?json$/.test(mimeType) ? toJSON(text) : text;
+    const data = /\/(?:.*[.+-])?json$/.test(mimeType) ? (JSON.parse(text) as JSONData) : text;
 
     return data;
 }

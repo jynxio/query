@@ -1,5 +1,4 @@
 import type { QueryResponse } from "./_response.ts";
-import type { QueryError } from "./_error.ts";
 
 import { isError } from "./_misc/guards.ts";
 
@@ -33,7 +32,7 @@ type Options = {
         /**
          * Previous output.
          */
-        readonly output: QueryResponse | QueryError;
+        readonly output: QueryResponse | Error;
     }) => Readonly<{ should: false } | { should: true; delay: number }>;
 };
 

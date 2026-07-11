@@ -1,28 +1,5 @@
-import { QueryError } from "../_error.ts";
-
-const ABORT_ERROR_NAME = "AbortError";
-const TIMEOUT_ERROR_NAME = "TimeoutError";
-
 function isError(i: unknown): i is Error {
     return i instanceof Error;
-}
-
-function isQueryError(i: unknown): i is QueryError {
-    return i instanceof QueryError;
-}
-
-function isTimeoutError(i: unknown): boolean {
-    if (isError(i) && i.name === TIMEOUT_ERROR_NAME) return true;
-    if (i instanceof QueryError && i.cause.type === "timeout") return true;
-
-    return false;
-}
-
-function isAbortedError(i: unknown): boolean {
-    if (isError(i) && i.name === ABORT_ERROR_NAME) return true;
-    if (i instanceof QueryError && i.cause.type === "abort") return true;
-
-    return false;
 }
 
 /**
@@ -49,4 +26,4 @@ function isResponse(i: unknown): i is Response {
     return false;
 }
 
-export { isAbortedError, isRequest, isResponse, isTimeoutError, isError, isQueryError };
+export { isRequest, isResponse, isError };

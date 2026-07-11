@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from "vite-plus/test";
 
-import type { QueryErrorCause } from "../src/_error.ts";
+import { QueryError, type QueryErrorCause } from "../src/_error.ts";
 
 import { Query } from "../src/index.ts";
 import { createSchema } from "./helpers/schema.ts";
@@ -229,7 +229,8 @@ describe("Safe mode", () => {
         expect(result.ok).toBe(false);
         if (!result.ok) {
             expect(result.error).toBeInstanceOf(Query.Error);
-            expect(result.error.cause.type).toBe("http");
+            expect(result.error).toBeInstanceOf(QueryError);
+            expect((result.error as QueryError).cause.type).toBe("http");
         }
     });
 });

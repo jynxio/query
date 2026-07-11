@@ -9,7 +9,6 @@ type JSONData = null | boolean | number | string | JSONData[] | { [key: string]:
 type QueryConstructor = typeof Query;
 type QueryInstance = InstanceType<QueryConstructor>;
 type QueryResponse = Awaited<ReturnType<QueryInstance>>;
-type QueryError = InstanceType<typeof Query.Error>;
 type QueryOptions = Required<NonNullable<ConstructorParameters<QueryConstructor>[0]>>;
 
 describe("Fetch shape types", () => {
@@ -77,7 +76,7 @@ describe("Query types", () => {
             if (result.ok) {
                 expectTypeOf(result.data).toEqualTypeOf<QueryResponse>();
             } else {
-                expectTypeOf(result.error).toEqualTypeOf<QueryError>();
+                expectTypeOf(result.error).toEqualTypeOf<Error>();
             }
         }
 
@@ -100,7 +99,7 @@ describe("Query types", () => {
 
         expectTypeOf<PrevAttempt["no"]>().toEqualTypeOf<number>();
         expectTypeOf<PrevAttempt["input"]>().toEqualTypeOf<Request>();
-        expectTypeOf<PrevAttempt["output"]>().toEqualTypeOf<QueryResponse | QueryError>();
+        expectTypeOf<PrevAttempt["output"]>().toEqualTypeOf<QueryResponse | Error>();
         expectTypeOf<RetryResult>().toEqualTypeOf<
             Readonly<{ should: false } | { should: true; delay: number }>
         >();

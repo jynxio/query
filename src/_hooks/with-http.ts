@@ -1,4 +1,4 @@
-import type { JSONData, Safe } from "../_types.ts";
+import type { JSONData } from "../_types.ts";
 import type { NormalizedFetch } from "../_types.ts";
 
 import { QueryError } from "../_error.ts";
@@ -11,30 +11,32 @@ function withHTTP(fn: NormalizedFetch): NormalizedFetch {
         if (response.ok) return response;
         if (response.type === "opaque") return response;
 
-        let statusErrorHandle: Safe<JSONData, Error> = { ok: false, error: new QueryError("unknown", "") };
+        let stateError: Promise<JSONData>;
 
-        const clonedResponse = response.clone();
         const details = {
             response: response,
             statusCode: response.status,
             statusText: response.statusText,
-            statusError: async (signal?: AbortSignal): Promise<JSONData> => {
-                if (signal?.aborted) throw new QueryError("abort");
-                if (statusErrorHandle.ok) return statusErrorHandle.data;
-
-                let text = "";
-                for await (const chunk of createStringifier(clonedResponse, signal)) text += chunk;
-
-                const contentType = clonedResponse.headers.get("content-type") ?? "";
-                const mimeType = (contentType.split(";", 1)[0] ?? "").trim().toLowerCase();
-                const data = /\/(?:.*[.+-])?json$/.test(mimeType) ? toJSON(text) : text;
-
-                return (statusErrorHandle = { ok: true, data }).data;
+            statusError: function (signal?: AbortSignal): Promise<JSONData> {
+                return (stateError ??= createStateError(response.clone(), signal));
             },
         };
 
         throw new QueryError("http", details);
     };
+}
+
+async function createStateError(response: Response, signal?: AbortSignal): Promise<JSONData> {
+    if (signal?.aborted) throw new QueryError("abort");
+
+    let text = "";
+    for await (const chunk of createStringifier(response, signal)) text += chunk;
+
+    const contentType = response.headers.get("content-type") ?? "";
+    const mimeType = (contentType.split(";", 1)[0] ?? "").trim().toLowerCase();
+    const data = /\/(?:.*[.+-])?json$/.test(mimeType) ? toJSON(text) : text;
+
+    return data;
 }
 
 async function* createStringifier(

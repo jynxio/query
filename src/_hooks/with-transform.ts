@@ -11,9 +11,12 @@ function withInternalize(fn: GlobalThisFetch): NormalizedFetch {
 function withExternalize(
     fn: NormalizedFetch,
 ): (...args: Parameters<GlobalThisFetch>) => QueryPromise<QueryResponse> {
-    return function (...args: Parameters<GlobalThisFetch>): QueryPromise<QueryResponse> {
-        return fn(new QueryRequest(...args));
-    };
+    /**
+     * Note:
+     * Synchronous exceptions thrown by `new QueryRequest` must be converted to
+     * Promise rejections to comply with the Fetch Spec.
+     */
+    return async (...args) => fn(new QueryRequest(...args));
 }
 
 function normalizeFetch(fn: GlobalThisFetch): NormalizedFetch {

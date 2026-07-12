@@ -1,8 +1,8 @@
 type State<T> =
     | { phase: "idle" }
-    | { phase: "pending"; value: Promise<T> }
-    | { phase: "fulfilled"; value: Promise<T> }
-    | { phase: "rejected" };
+    | { phase: "fulfilled"; response: T }
+    | { phase: "rejected"; error?: unknown }
+    | { phase: "pending"; promise: Promise<T> };
 
 function memoize<Args extends unknown[], R>(
     fn: (...args: Args) => Promise<R>,
@@ -10,17 +10,14 @@ function memoize<Args extends unknown[], R>(
     let state: State<R> = { phase: "idle" };
 
     return function memoizedFn(...args: Args): Promise<R> {
-        if (state.phase === "fulfilled") return state.value;
-        if (state.phase === "pending") return state.value;
+        if (state.phase === "pending") return state.promise;
+        if (state.phase === "fulfilled") return Promise.resolve(state.response);
 
-        const value = fn(...args);
+        state = { phase: "pending", promise: fn(...args) };
+        state.promise.catch((error) => (state = { phase: "rejected", error }));
+        state.promise.then((response) => (state = { phase: "fulfilled", response })).catch(() => {});
 
-        state = { phase: "pending", value };
-        value
-            .then(() => (state = { phase: "fulfilled", value }))
-            .catch(() => (state = { phase: "rejected" }));
-
-        return value;
+        return state.promise;
     };
 }
 

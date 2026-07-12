@@ -12,14 +12,13 @@ function withHTTP(fn: NormalizedFetch): NormalizedFetch {
         if (response.type === "opaque") return response;
 
         const clonedResponse = response.clone();
-        const memoizedCreateStatusError = memoize(createStatusError);
-        const statusError = (signal?: AbortSignal) => memoizedCreateStatusError(clonedResponse, signal);
+        const statusError = (signal?: AbortSignal) => createStatusError(clonedResponse.clone(), signal);
 
         throw new QueryError("http", {
             response,
-            statusError,
             statusCode: response.status,
             statusText: response.statusText,
+            statusError: memoize(statusError),
         });
     };
 }

@@ -20,9 +20,12 @@ function withExternalize(
 }
 
 function normalizeFetch(fn: GlobalThisFetch): NormalizedFetch {
-    return async function (request: QueryRequest) {
-        return QueryResponse.cast(await fn(request));
-    };
+    /**
+     * Note:
+     * Do not convert synchronous exceptions thrown by `fn` into Promise
+     * rejections, to avoid triggering subsequent retries.
+     */
+    return (request) => fn(request).then((value) => QueryResponse.cast(value));
 }
 
 export { withInternalize, withExternalize };

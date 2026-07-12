@@ -2,6 +2,7 @@ import type { JSONData } from "../_types.ts";
 import type { NormalizedFetch } from "../_types.ts";
 
 import { QueryError } from "../_error.ts";
+import { memoize } from "../_misc/memoize.ts";
 
 function withHTTP(fn: NormalizedFetch): NormalizedFetch {
     return async function (request) {
@@ -10,22 +11,20 @@ function withHTTP(fn: NormalizedFetch): NormalizedFetch {
         if (response.ok) return response;
         if (response.type === "opaque") return response;
 
-        let stateError: Promise<JSONData>;
+        const clonedResponse = response.clone();
+        const memoizedCreateStatusError = memoize(createStatusError);
+        const statusError = (signal?: AbortSignal) => memoizedCreateStatusError(clonedResponse, signal);
 
-        const details = {
-            response: response,
+        throw new QueryError("http", {
+            response,
+            statusError,
             statusCode: response.status,
             statusText: response.statusText,
-            statusError: function (signal?: AbortSignal): Promise<JSONData> {
-                return (stateError ??= createStateError(response.clone(), signal));
-            },
-        };
-
-        throw new QueryError("http", details);
+        });
     };
 }
 
-async function createStateError(response: Response, signal?: AbortSignal): Promise<JSONData> {
+async function createStatusError(response: Response, signal?: AbortSignal): Promise<JSONData> {
     if (signal?.aborted) throw new QueryError("abort");
 
     let text = "";
@@ -36,17 +35,17 @@ async function createStateError(response: Response, signal?: AbortSignal): Promi
     const data = /\/(?:.*[.+-])?json$/.test(mimeType) ? (JSON.parse(text) as JSONData) : text;
 
     return data;
-}
 
-async function* createStringifier(
-    response: Response,
-    signal?: AbortSignal,
-): AsyncGenerator<string, void, void> {
-    const rawStream = response.body;
-    if (!rawStream) return yield await response.text();
+    async function* createStringifier(
+        response: Response,
+        signal?: AbortSignal,
+    ): AsyncGenerator<string, void, void> {
+        const rawStream = response.body;
+        if (!rawStream) return yield await response.text();
 
-    const textStream = rawStream.pipeThrough(new TextDecoderStream(), { signal });
-    for await (const chunk of textStream) yield chunk;
+        const textStream = rawStream.pipeThrough(new TextDecoderStream(), { signal });
+        for await (const chunk of textStream) yield chunk;
+    }
 }
 
 export { withHTTP };

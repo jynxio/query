@@ -11,36 +11,35 @@ function withHTTP(fn: NormalizedFetch): NormalizedFetch {
         if (response.ok) return response;
         if (response.type === "opaque") return response;
 
-        const clonedResponse = response.clone();
-        const statusError = (signal?: AbortSignal) => createStatusError(clonedResponse.clone(), signal);
+        const originalResponse = response.clone();
+        const statusError = memoize((signal?: AbortSignal) => createStatusError(originalResponse, signal));
 
         throw new QueryError("http", {
             response,
+            statusError,
             statusCode: response.status,
             statusText: response.statusText,
-            statusError: memoize(statusError),
         });
     };
 }
 
-async function createStatusError(response: Response, signal?: AbortSignal): Promise<JSONData> {
-    if (signal?.aborted) throw new QueryError("abort");
+async function createStatusError(originalResponse: Response, signal?: AbortSignal): Promise<JSONData> {
+    if (signal?.aborted) throw signal.reason as unknown;
+
+    const clonedResponse = originalResponse.clone();
 
     let text = "";
-    for await (const chunk of createStringifier(response, signal)) text += chunk;
+    for await (const chunk of createStringifier()) text += chunk;
 
-    const contentType = response.headers.get("content-type") ?? "";
+    const contentType = clonedResponse.headers.get("content-type") ?? "";
     const mimeType = (contentType.split(";", 1)[0] ?? "").trim().toLowerCase();
     const data = /\/(?:.*[.+-])?json$/.test(mimeType) ? (JSON.parse(text) as JSONData) : text;
 
     return data;
 
-    async function* createStringifier(
-        response: Response,
-        signal?: AbortSignal,
-    ): AsyncGenerator<string, void, void> {
-        const rawStream = response.body;
-        if (!rawStream) return yield await response.text();
+    async function* createStringifier(): AsyncGenerator<string, void, void> {
+        const rawStream = clonedResponse.body;
+        if (!rawStream) return yield await clonedResponse.text();
 
         const textStream = rawStream.pipeThrough(new TextDecoderStream(), { signal });
         for await (const chunk of textStream) yield chunk;

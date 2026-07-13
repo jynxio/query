@@ -76,7 +76,7 @@ describe("Query types", () => {
             if (result.ok) {
                 expectTypeOf(result.data).toEqualTypeOf<QueryResponse>();
             } else {
-                expectTypeOf(result.error).toEqualTypeOf<Error>();
+                expectTypeOf(result.error).toEqualTypeOf<unknown>();
             }
         }
 
@@ -99,7 +99,9 @@ describe("Query types", () => {
 
         expectTypeOf<PrevAttempt["no"]>().toEqualTypeOf<number>();
         expectTypeOf<PrevAttempt["input"]>().toEqualTypeOf<Request>();
-        expectTypeOf<PrevAttempt["output"]>().toEqualTypeOf<QueryResponse | Error>();
+        expectTypeOf<PrevAttempt["output"]>().toEqualTypeOf<
+            { ok: true; data: QueryResponse } | { ok: false; error: unknown }
+        >();
         expectTypeOf<RetryResult>().toEqualTypeOf<
             Readonly<{ should: false } | { should: true; delay: number }>
         >();

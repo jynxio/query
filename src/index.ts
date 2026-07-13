@@ -20,7 +20,7 @@ type QueryCall<Result> = {
 };
 type Query = BaseQuery & { safe: SafeQuery };
 type BaseQuery = QueryCall<QueryResponse>;
-type SafeQuery = QueryCall<Safe<QueryResponse, Error>>;
+type SafeQuery = QueryCall<Safe<QueryResponse, unknown>>;
 type QueryConstructor = {
     new (options?: Partial<QueryOptions>, fn?: GlobalThisFetch): Query;
     Error: typeof QueryError;
@@ -53,7 +53,7 @@ const Query = class {
             return cache.baseQuery(...args);
         }
 
-        function safeQuery(...args: Parameters<GlobalThisFetch>): QueryPromise<Safe<QueryResponse, Error>> {
+        function safeQuery(...args: Parameters<GlobalThisFetch>): QueryPromise<Safe<QueryResponse, unknown>> {
             cache.safeQuery ??= pipe(settledFn)
                 .next(withInternalize)
                 .next(withRetry, settledOptions)

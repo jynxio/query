@@ -1,6 +1,6 @@
 import type { QueryResponse } from "./_response.ts";
 
-import { isError } from "./_misc/guards.ts";
+import type { Safe } from "./_types.ts";
 
 type Options = {
     /**
@@ -32,7 +32,7 @@ type Options = {
         /**
          * Previous output.
          */
-        readonly output: QueryResponse | Error;
+        readonly output: Safe<QueryResponse, unknown>;
     }) => Readonly<{ should: false } | { should: true; delay: number }>;
 };
 
@@ -52,7 +52,7 @@ const OPTIONS = { retry, attemptTimeout: 10_000, overallTimeout: Number.POSITIVE
 function retry(prevAttempt: {
     readonly no: number;
     readonly input: Request;
-    readonly output: Error | QueryResponse;
+    readonly output: Safe<QueryResponse, unknown>;
 }): Readonly<{ should: false } | { should: true; delay: number }> {
     const attemptCountSoFar = prevAttempt.no;
     if (attemptCountSoFar > RETRY_COUNT) return { should: false };
@@ -61,12 +61,12 @@ function retry(prevAttempt: {
     if (!isRetryableMethod) return { should: false };
 
     const localDelay = 300 * 2 ** (attemptCountSoFar - 1);
-    if (isError(prevAttempt.output)) return { should: true, delay: localDelay };
+    if (!prevAttempt.output.ok) return { should: true, delay: localDelay };
 
-    const isRetryableStatus = RETRY_STATUS.has(prevAttempt.output.status);
+    const isRetryableStatus = RETRY_STATUS.has(prevAttempt.output.data.status);
     if (!isRetryableStatus) return { should: false };
 
-    const remoteDelay = parseRetryAfterField(prevAttempt.output);
+    const remoteDelay = parseRetryAfterField(prevAttempt.output.data);
     if (remoteDelay === undefined) return { should: true, delay: localDelay };
 
     return { should: true, delay: remoteDelay };

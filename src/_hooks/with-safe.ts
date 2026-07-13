@@ -4,16 +4,12 @@ import { QueryPromise } from "../_promise.ts";
 
 function withSafe<Args extends unknown[], R>(
     fn: (...args: Args) => QueryPromise<R>,
-): (...args: Args) => QueryPromise<Safe<R, Error>> {
-    return function (...args: Args): QueryPromise<Safe<R, Error>> {
+): (...args: Args) => QueryPromise<Safe<R, unknown>> {
+    return function (...args: Args): QueryPromise<Safe<R, unknown>> {
         return fn(...args)
-            .then((res) => ({ ok: true, data: res }) as const)
-            .catch((err) => ({ ok: false, error: toError(err) }) as const);
+            .then<{ ok: true; data: R }>((data) => ({ ok: true, data }))
+            .catch<{ ok: false; error: unknown }>((error) => ({ ok: false, error }));
     };
-}
-
-function toError(i: unknown): Error {
-    return i instanceof Error ? i : new Error(String(i));
 }
 
 export { withSafe };

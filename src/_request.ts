@@ -1,4 +1,4 @@
-import { isRequest } from "./_misc/guards.ts";
+import { isRequest, isRequestInitEmpty } from "./_misc/guards.ts";
 
 type QueryRequestConstructor = {
     /**
@@ -22,7 +22,7 @@ type QueryRequest = AbortableQueryRequest | UnabortableQueryRequest;
 const QueryRequest = class {
     constructor(...[base, options]: ConstructorParameters<typeof Request>) {
         const isBaseRequest = isRequest(base);
-        const isOptionsEmpty = Object.keys(options ?? {}).length === 0;
+        const isOptionsEmpty = isRequestInitEmpty(options);
         const isUnabortable = isBaseRequest && isOptionsEmpty;
 
         if (isUnabortable) return new UnabortableQueryRequest(base, options);

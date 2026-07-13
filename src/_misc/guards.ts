@@ -1,3 +1,36 @@
+/**
+ * Copy from Fetch Spec.
+ * @see {@link https://fetch.spec.whatwg.org/#requestinit}
+ */
+const REQUEST_INIT_MEMBERS = [
+    "method",
+    "headers",
+    "body",
+    "referrer",
+    "referrerPolicy",
+    "mode",
+    "credentials",
+    "cache",
+    "redirect",
+    "integrity",
+    "keepalive",
+    "signal",
+    "duplex",
+    "priority",
+    "window",
+];
+
+function isRequestInitEmpty(i: ConstructorParameters<typeof Request>[1]): boolean {
+    /**
+     * Copy from Chromium.
+     * @see {@link https://github.com/chromium/chromium/blob/3bb740088c53ad4946b95596d1b1894da0656ed7/third_party/blink/renderer/core/fetch/request.cc#L214-L222}
+     */
+    if (i === null) return true;
+    if (i === undefined) return true;
+
+    return REQUEST_INIT_MEMBERS.every((item) => Reflect.get(i, item) === undefined);
+}
+
 function isError(i: unknown): i is Error {
     return i instanceof Error;
 }
@@ -26,4 +59,4 @@ function isResponse(i: unknown): i is Response {
     return false;
 }
 
-export { isRequest, isResponse, isError };
+export { isRequest, isResponse, isRequestInitEmpty, isError };

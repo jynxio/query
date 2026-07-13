@@ -1,6 +1,6 @@
 import { scheduleTask } from "./schedule-task.ts";
 
-function sleep(duration: number, signal?: AbortSignal): Promise<void> {
+async function sleep(duration: number, signal?: AbortSignal): Promise<void> {
     if (signal?.aborted) throw signal.reason;
 
     const ctrl = Promise.withResolvers<void>();

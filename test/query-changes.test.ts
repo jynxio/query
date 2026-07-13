@@ -107,7 +107,7 @@ describe("Retry", () => {
             retry: (prev) => {
                 attempts.push({
                     no: prev.no,
-                    status: prev.output instanceof Response ? prev.output.status : undefined,
+                    status: prev.output.ok ? prev.output.data.status : undefined,
                 });
                 return prev.no === 1 ? { should: true, delay: 1 } : { should: false };
             },
@@ -170,28 +170,30 @@ describe("Timeout and abort", () => {
         await assertion;
     });
 
-    test("Normalizes user AbortError", async () => {
+    test("Preserves user AbortError", async () => {
         const controller = new AbortController();
         mockFetch(pendingFetch);
         const query = new Query();
+        const reason = new DOMException("Abort", "AbortError");
 
         const promise = query("https://example.com/abort", { signal: controller.signal });
         await Promise.resolve();
-        controller.abort(new DOMException("Abort", "AbortError"));
+        controller.abort(reason);
 
-        await expect(promise).rejects.toMatchObject({ cause: { type: "abort" } });
+        await expect(promise).rejects.toBe(reason);
     });
 
-    test("Normalizes user TimeoutError", async () => {
+    test("Preserves user TimeoutError", async () => {
         const controller = new AbortController();
         mockFetch(pendingFetch);
         const query = new Query();
+        const reason = new DOMException("Timeout", "TimeoutError");
 
         const promise = query("https://example.com/timeout-cause", { signal: controller.signal });
         await Promise.resolve();
-        controller.abort(new DOMException("Timeout", "TimeoutError"));
+        controller.abort(reason);
 
-        await expect(promise).rejects.toMatchObject({ cause: { type: "timeout" } });
+        await expect(promise).rejects.toBe(reason);
     });
 });
 

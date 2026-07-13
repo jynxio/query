@@ -15,6 +15,7 @@ describe("Fetch shape types", () => {
     test("Uses Fetch parameters", () => {
         expectTypeOf<Parameters<QueryInstance>>().toEqualTypeOf<Parameters<typeof fetch>>();
         expectTypeOf<Parameters<QueryInstance["safe"]>>().toEqualTypeOf<Parameters<typeof fetch>>();
+        expectTypeOf<ReturnType<QueryInstance>>().toEqualTypeOf<QueryPromise<QueryResponse>>();
         expectTypeOf(query).toEqualTypeOf<QueryInstance>();
     });
 });
@@ -69,6 +70,30 @@ describe("Query types", () => {
         }
 
         expectTypeOf(assertThenCatch).toEqualTypeOf<(query: QueryInstance) => void>();
+    });
+
+    test("Preserves QueryPromise types through chains", () => {
+        function assertChains(query: QueryInstance) {
+            const mapped = query("https://example.com").then(() => 1);
+            const recovered = query("https://example.com").catch(() => "fallback" as const);
+            const finalized = query("https://example.com").finally(() => {});
+            const combined = query("https://example.com")
+                .then(
+                    () => 1,
+                    () => "fallback" as const,
+                )
+                .then((value) => value);
+
+            expectTypeOf(mapped).toEqualTypeOf<QueryPromise<number>>();
+            expectTypeOf(recovered).toEqualTypeOf<QueryPromise<QueryResponse | "fallback">>();
+            expectTypeOf(finalized).toEqualTypeOf<QueryPromise<QueryResponse>>();
+            expectTypeOf(combined).toEqualTypeOf<QueryPromise<number | "fallback">>();
+        }
+
+        const nativePromise: QueryPromise<number> = Promise.resolve(1);
+
+        expectTypeOf(assertChains).toEqualTypeOf<(query: QueryInstance) => void>();
+        expectTypeOf(nativePromise).toEqualTypeOf<QueryPromise<number>>();
     });
 
     test("Narrows safe results", () => {

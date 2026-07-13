@@ -1,7 +1,7 @@
 {
     "name": "@jynxio/query",
-    "version": "coming-soon",
-    "description": "Fetch-compatible HTTP client. Batteries included",
+    "version": "0.1.0",
+    "description": "Fetch API–compatible HTTP client. Batteries included",
     "keywords": [
         "fetch",
         "http-client",

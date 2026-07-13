@@ -3,7 +3,6 @@ import type { QueryResponse } from "../_response.ts";
 import type { NormalizedFetch } from "../_types.ts";
 import type { QueryRequest } from "../_request.ts";
 
-import { isResponse } from "../_misc/guards.ts";
 import { QueryError } from "../_error.ts";
 import { sleep } from "../_misc/sleep.ts";
 import { withTimeout } from "./with-timeout.ts";
@@ -54,7 +53,7 @@ function withRetry(fn: NormalizedFetch, options: Required<QueryOptions>): Normal
             if (!isTimeEnough) throw new QueryError("timeout");
 
             // 准备重试，开始前要释放 body
-            if (isResponse(output)) output.body?.cancel().catch(() => {});
+            if (output.ok) output.data.body?.cancel().catch(() => {});
             await sleep(retry.delay, request.signal);
         }
     }

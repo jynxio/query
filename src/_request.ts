@@ -43,7 +43,15 @@ class AbortableQueryRequest extends Request {
         const userSignal = optsSignal === undefined ? baseSignal : optsSignal;
         const settledSignal = AbortSignal.any([userSignal ?? [], ctrl.signal].flat());
 
-        super(base, { ...options, signal: settledSignal });
+        /**
+         * Note:
+         * 必须把 options 设置为 settledOptions 的原型以符合 Fetch Spec 所规定的
+         * 「Request 会访问 RequestInit 的非枚举属性、内部属性、原型链属性等的要求」。
+         */
+        const settledOptions = Object.create(options ?? null);
+        Object.defineProperty(settledOptions, "signal", { value: settledSignal });
+
+        super(base, settledOptions);
         this.abort = abort;
         this.clone = clone;
         this.isAbortable = true;

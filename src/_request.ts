@@ -2,14 +2,13 @@ import { isRequest, isRequestInitEmpty } from "./_misc/guards.ts";
 
 type QueryRequestConstructor = {
     /**
-     * A Request with built-in Abort support.
+     * A Request with built-in abort support.
      *
      * @remarks
-     * In some cases, Abort does not work because the Signal it relies on is not injected into the final Request instance.
-     * This is intentional, because injecting it would make the original and new Request instances non-equivalent. See the
-     * Fetch Standard for details.
+     * Abort may not work when its signal is not injected into the final Request instance. This is intentional: injecting
+     * it would make the original and new Request instances non-equivalent. See the Fetch Standard for details.
      *
-     * @see {@link https://fetch.spec.whatwg.org/#fetch-method | The fetch(input, init) method steps are}
+     * @see {@link https://fetch.spec.whatwg.org/#fetch-method | The fetch(input, init) method steps}
      * @see {@link https://fetch.spec.whatwg.org/#request-class | The new Request(input, init) constructor steps}
      *
      * @internal
@@ -44,9 +43,8 @@ class AbortableQueryRequest extends Request {
         const settledSignal = AbortSignal.any([userSignal ?? [], ctrl.signal].flat());
 
         /**
-         * Note:
-         * 必须把 options 设置为 settledOptions 的原型以符合 Fetch Spec 所规定的
-         * 「Request 会访问 RequestInit 的非枚举属性、内部属性、原型链属性等的要求」。
+         * Set `options` as the prototype of `settledOptions` to meet the Fetch Standard requirement that Request access
+         * non-enumerable, internal, and inherited RequestInit properties.
          */
         const settledOptions = Object.create(options ?? null);
         Object.defineProperty(settledOptions, "signal", { value: settledSignal });

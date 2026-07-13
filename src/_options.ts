@@ -4,33 +4,33 @@ import type { Safe } from "./_types.ts";
 
 type Options = {
     /**
-     * Max time for one try.
+     * Maximum duration of a single attempt.
      *
      * @defaultValue 10_000
      */
     readonly attemptTimeout: number;
     /**
-     * Max time for the whole call.
+     * Maximum duration of the entire call.
      *
      * @defaultValue Number.POSITIVE_INFINITY
      */
     readonly overallTimeout: number;
     /**
-     * Decides the next try.
+     * Determines whether to retry.
      *
      * @defaultValue Retry twice for safe methods and selected status codes.
      */
     readonly retry: (prevAttempt: {
         /**
-         * Try number. Starts at 1.
+         * Attempt number, starting at 1.
          */
         readonly no: number;
         /**
-         * Previous input.
+         * Input from the previous attempt.
          */
         readonly input: Request;
         /**
-         * Previous output.
+         * Output from the previous attempt.
          */
         readonly output: Safe<QueryResponse, unknown>;
     }) => Readonly<{ should: false } | { should: true; delay: number }>;
@@ -42,12 +42,12 @@ const RETRY_METHOD = new Set(["get", "put", "head", "delete", "options", "trace"
 const OPTIONS = { retry, attemptTimeout: 10_000, overallTimeout: Number.POSITIVE_INFINITY } satisfies Options;
 
 /**
- * Default retry.
+ * Default retry policy.
  *
  * @remarks
  * Retries twice for GET, PUT, HEAD, DELETE, OPTIONS, and TRACE.
- * Retries 408, 413, 429, 500, 502, 503, and 504.
- * Uses Retry-After first. Falls back to 300 ms, then 600 ms.
+ * Retries responses with status 408, 413, 429, 500, 502, 503, or 504.
+ * Uses Retry-After first, then falls back to 300 ms and 600 ms.
  */
 function retry(prevAttempt: {
     readonly no: number;

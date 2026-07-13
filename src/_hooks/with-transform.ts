@@ -12,18 +12,14 @@ function withExternalize(
     fn: NormalizedFetch,
 ): (...args: Parameters<GlobalThisFetch>) => QueryPromise<QueryResponse> {
     /**
-     * Note:
-     * Synchronous exceptions thrown by `new QueryRequest` must be converted to
-     * Promise rejections to comply with the Fetch Spec.
+     * Convert synchronous exceptions from `new QueryRequest` to Promise rejections to comply with the Fetch Standard.
      */
     return async (...args) => fn(new QueryRequest(...args));
 }
 
 function normalizeFetch(fn: GlobalThisFetch): NormalizedFetch {
     /**
-     * Note:
-     * Do not convert synchronous exceptions thrown by `fn` into Promise
-     * rejections, to avoid triggering subsequent retries.
+     * Do not convert synchronous exceptions from `fn` to Promise rejections, to avoid triggering subsequent retries.
      */
     return (request) => fn(request).then((value) => QueryResponse.cast(value));
 }

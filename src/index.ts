@@ -13,7 +13,7 @@ import { QueryError } from "./_error.ts";
 
 type QueryCall<Result> = {
     /**
-     * @deprecated It's supported but not recommended.
+     * @deprecated Supported but not recommended.
      */
     (input: Request, init?: Record<PropertyKey, never>): QueryPromise<Result>;
     (input: Parameters<GlobalThisFetch>[0], init?: Parameters<GlobalThisFetch>[1]): QueryPromise<Result>;

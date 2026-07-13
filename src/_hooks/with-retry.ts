@@ -24,35 +24,35 @@ function withRetry(fn: NormalizedFetch, options: Required<QueryOptions>): Normal
         for (let attemptNo = 1; ; attemptNo++) {
             const input = request.clone();
 
-            // 如果 fn 抛出同步异常，那么就同步 throw（用户自定义的 FetchLike 可能会抛出同步异常）
+            // Rethrow synchronous errors from `fn` synchronously, since custom FetchLike implementations may throw.
             const promise = withTimeout(fn, { duration, wrapError })(input);
             const output = await promise
                 .then<{ ok: true; data: QueryResponse }>((data) => ({ ok: true, data }))
                 .catch<{ ok: false; error: unknown }>((error) => ({ ok: false, error }));
 
-            // 如果 fn 被终止
+            // Whether the attempt was aborted.
             const isAborted = input.signal.aborted;
             const abortReason = input.signal.reason as unknown;
 
-            // 如果 fn 被终止 && 超总时长
+            // Abort caused by the overall timeout.
             const isOverallTimeoutAborted = isAborted && abortReason === OVERALL_TIMEOUT_ERROR;
             if (isOverallTimeoutAborted) throw abortReason;
 
-            // 如果 fn 被终止 & 用户终止
+            // Abort initiated by the user.
             const isUserManuallyAbort = isAborted && abortReason !== ATTEMPT_TIMEOUT_ERROR;
             if (isUserManuallyAbort) throw abortReason;
 
-            // 如果 options.retry 决定不重试
+            // Stop if `options.retry` disables retries.
             const retry = options.retry({ no: attemptNo, input, output });
             if (!retry.should)
                 if (output.ok) return output.data;
                 else throw output.error;
 
-            // 如果不够时间做重试
+            // Ensure sufficient time remains for a retry.
             const isTimeEnough = performance.now() - startTime + retry.delay < options.overallTimeout;
             if (!isTimeEnough) throw new QueryError("timeout");
 
-            // 准备重试，开始前要释放 body
+            // Release the response body before retrying.
             if (output.ok) output.data.body?.cancel().catch(() => {});
             await sleep(retry.delay, request.signal);
         }

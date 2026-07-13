@@ -21,9 +21,8 @@ function withTimeout(
             const error = wrapError(new QueryError("timeout"));
 
             /**
-             * In some cases, request.abort may intentionally have no effect. result.abort is the fallback for such
-             * cases, ensuring that query has terminated from the user's perspective even though the underlying fetch
-             * has not.
+             * request.abort may intentionally do nothing. result.abort ensures the query ends from the user's
+             * perspective even if the underlying fetch continues.
              */
             result.abort(error);
             request.abort(error);

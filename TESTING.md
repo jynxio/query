@@ -1,6 +1,6 @@
 # Testing
 
-<!-- TODO(i18n): Translate the remaining Chinese documentation to English. -->
+<!-- TODO(i18n): Translate the remaining Chinese documentation into English. -->
 
 只测 Query 自己改过的行为。
 

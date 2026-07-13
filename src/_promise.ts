@@ -13,21 +13,21 @@ type QueryPromiseConstructor = TypedOmit<
     typeof Promise,
     "all" | "allSettled" | "any" | "prototype" | "race" | "reject" | "resolve" | "try" | "withResolvers"
 > & {
-    // prototype
+    // Promise.prototype
     readonly prototype: QueryPromise<unknown>;
 
-    // new
+    // Promise constructor
     new <T>(
         executor: (resolve: (value: T | PromiseLike<T>) => void, reject: (reason?: unknown) => void) => void,
     ): QueryPromise<T>;
 
-    // all
+    // Promise.all
     all<T extends readonly unknown[] | []>(
         values: T,
     ): QueryPromise<{ -readonly [P in keyof T]: Awaited<T[P]> }>;
     all<T>(values: Iterable<T | PromiseLike<T>>): QueryPromise<Awaited<T>[]>;
 
-    // allSettled
+    // Promise.allSettled
     allSettled<T extends readonly unknown[] | []>(
         values: T,
     ): QueryPromise<{ -readonly [P in keyof T]: QueryPromiseSettledResult<Awaited<T[P]>> }>;
@@ -35,29 +35,29 @@ type QueryPromiseConstructor = TypedOmit<
         values: Iterable<T | PromiseLike<T>>,
     ): QueryPromise<QueryPromiseSettledResult<Awaited<T>>[]>;
 
-    // any
+    // Promise.any
     any<T extends readonly unknown[] | []>(values: T): QueryPromise<Awaited<T[number]>>;
     any<T>(values: Iterable<T | PromiseLike<T>>): QueryPromise<Awaited<T>>;
 
-    // race
+    // Promise.race
     race<T extends readonly unknown[] | []>(values: T): QueryPromise<Awaited<T[number]>>;
     race<T>(values: Iterable<T | PromiseLike<T>>): QueryPromise<Awaited<T>>;
 
-    // reject
+    // Promise.reject
     reject<T = never>(reason?: unknown): QueryPromise<T>;
 
-    // resolve
+    // Promise.resolve
     resolve(): QueryPromise<void>;
     resolve<T>(value: T): QueryPromise<Awaited<T>>;
     resolve<T>(value: T | PromiseLike<T>): QueryPromise<Awaited<T>>;
 
-    // try
+    // Promise.try
     try<T, Args extends unknown[]>(
         callbackFn: (...args: Args) => T | PromiseLike<T>,
         ...args: Args
     ): QueryPromise<Awaited<T>>;
 
-    // withResolvers
+    // Promise.withResolvers
     withResolvers<T>(): QueryPromiseWithResolvers<T>;
 };
 

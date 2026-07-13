@@ -4,7 +4,7 @@ import type { NormalizedFetch } from "../_types.ts";
 import type { QueryRequest } from "../_request.ts";
 
 import { QueryError } from "../_error.ts";
-import { sleep } from "../_misc/sleep.ts";
+import { sleep } from "../_misc/schedule.ts";
 import { withTimeout } from "./with-timeout.ts";
 
 const OVERALL_TIMEOUT_ERROR = new QueryError("timeout");

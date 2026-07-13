@@ -68,10 +68,11 @@
     - 成功后 timer 会清理
     - 0ms timeout/delay 边界
 
-### Abort normalization
+### Abort propagation
 
-- `fetch`：抛原始 abort / timeout cause
-- `query`：归一成 `Query.Error("abortion")` 或 `Query.Error("timeout")`
+- `fetch`：抛原始 abort / timeout reason
+- `query`：保留用户的原始 reason；只有 Query 自己产生的 attempt / overall timeout 使用
+  `Query.Error("timeout")`
 - 需要测：
     - 用户传入的 `signal` 真的传入内部 fetch
     - 用户 `AbortError`
@@ -95,7 +96,7 @@
 ### Unknown errors
 
 - `fetch`：抛用户自己在 fetch-like 里抛出的错误
-- `query`：包装成 `Query.Error("unknown")`
+- `query`：保留原始 rejection reason
 - 需要测：
     - fetch-like throw `Error`
     - fetch-like reject `Error`
@@ -105,7 +106,7 @@
 ### Safe mode
 
 - `query`：抛错
-- `query.safe`：返回 `{ ok: false, error }`
+- `query.safe`：返回 `{ ok: false, error }`，且 `error` 保持原始 rejection reason
 - 需要测：
     - 同一套 Query delta case 同时跑普通模式和 safe 模式
     - 普通模式成功时 safe 返回 `{ ok: true, data }`

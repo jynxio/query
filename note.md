@@ -12,13 +12,16 @@ Treat them as constraints unless the public API requirements change.
 - `then`, `catch`, and `finally` return `QueryPromise` in the public type so enhanced typing survives a chain.
 - Callback and resolver inputs deliberately use the standard `PromiseLike<T>`. Replacing it with a narrower custom
   thenable would violate substitutability and reject valid third-party thenables.
-- Promise rejection reasons remain `unknown`. The library preserves rejected `Error` objects instead of broadly
-  reclassifying them as `QueryError`; doing otherwise could mislabel user-defined errors as timeouts or aborts.
-- `query.safe()` converts promise rejections to `{ ok: false, error: Error }`. Non-`Error` reasons are wrapped in
-  `Error`, while existing `Error` objects retain their identity.
+- Promise rejection reasons remain `unknown`. The library preserves arbitrary rejection reasons instead of broadly
+  reclassifying them as `QueryError`; doing otherwise could mislabel user-defined values as timeouts or aborts.
+- `query.safe()` converts promise rejections to `{ ok: false, error: unknown }` without changing the rejection reason.
+  Although rejecting with an `Error` is conventional, JavaScript permits any value and the safe API preserves it.
 - `withSafe()` intentionally handles promise rejections only. A synchronous exception thrown while invoking the
-  wrapped function is not converted to a safe result. This lets synchronous setup failures bypass retry and means
-  `query.safe()` may throw before returning a promise.
+  wrapped function is not converted to a safe result; `withRetry()` relies on this to keep synchronous failures from a
+  custom Fetch-compatible function out of the retry policy.
+- `withExternalize()` is deliberately async so exceptions from constructing `QueryRequest` become promise rejections,
+  matching `fetch()` for invalid input. Consequently, public `query()` and `query.safe()` still return promises for
+  invalid request arguments.
 
 ## Public API shape
 
@@ -57,26 +60,31 @@ Treat them as constraints unless the public API requirements change.
   invalid duration values.
 - `withRetry()` uses identity-stable timeout errors to distinguish overall timeout from per-attempt timeout. These
   internal singleton errors must not be mutated by consumers.
-- Fulfilled responses and asynchronous request failures are passed to `options.retry`. Synchronous setup failures,
-  overall timeout, and user abort bypass it. A per-attempt timeout may be retried.
-- The default retry policy treats eligible `Error` outputs as request failures. A custom fetch implementation that
-  rejects with its own `Error` can therefore be retried unless a custom retry policy declines it.
+- `options.retry` receives the previous result as `Safe<QueryResponse, unknown>`. Fulfilled responses and asynchronous
+  request failures are passed to it; synchronous setup failures, overall timeout, and user abort bypass it. A
+  per-attempt timeout may be retried.
+- The default retry policy retries rejected outputs for eligible methods regardless of the rejection reason. A custom
+  Fetch-compatible implementation can therefore have its asynchronous rejection retried unless a custom policy
+  declines it.
 
 ## Error and response behavior
 
 - `QueryError` represents errors created deliberately by the library, including timeout, abort, JSON schema, and HTTP
   status failures. Arbitrary transport and user errors are not generally normalized to `QueryError`.
-- Non-2xx responses become lazy `QueryError<"http">` failures. The public method is deliberately named
-  `statusError(signal?)` to align with `statusCode` and `statusText`.
+- Non-2xx responses become lazy `QueryError<"http">` failures, except opaque responses whose status cannot be
+  inspected. The public method is deliberately named `statusError(signal?)` to align with `statusCode` and
+  `statusText`.
 - `statusError()` reads a cloned error body and supports cancellation while reading. Pending and fulfilled reads are
   shared; rejected reads are not cached, so a later call invokes the reader again.
-- `query.safe()` is applied at the end of the same pipeline as normal query execution. It changes only asynchronous
-  rejection results to `{ ok: true, data } | { ok: false, error }`; it must not change request behavior.
+- `query.safe()` is applied at the end of the same pipeline as normal query execution. It changes only promise
+  settlement into `{ ok: true, data } | { ok: false, error }`; it must not change request behavior or rejection values.
 
 ## Internal pipeline
 
 - `_fetch.ts` was intentionally removed. `NormalizedFetch` is the internal one-request function type, and
   `withInternalize()` adapts the global Fetch-compatible function to it.
+- `withInternalize()` deliberately does not use an async wrapper: a custom Fetch-compatible function's synchronous
+  exception must remain synchronous at the retry boundary and bypass `options.retry`.
 - The hook order in `index.ts` is intentional: internalize, retry, convert HTTP failures, then externalize. Safe mode
   adds `withSafe()` only after this shared pipeline.
 

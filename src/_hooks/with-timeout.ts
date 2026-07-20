@@ -15,20 +15,20 @@ function withTimeout(
     if (hasNoTimeout) return fn;
 
     return function (request: QueryRequest): QueryPromise<QueryResponse> {
-        const result = withAbort(fn)(request);
+        const handle = withAbort(fn)(request);
         const cleanupTask = schedule(() => {
-            const wrapError = options.wrapError ?? ((i) => i);
-            const error = wrapError(createTimeoutError());
+            const timeoutError = createTimeoutError();
+            const abortReason = (options.wrapError ?? ((i) => i))(timeoutError);
 
             /**
-             * request.abort may intentionally do nothing. result.abort ensures the query ends from the user's
+             * request.abort may intentionally do nothing. handle.abort ensures the query ends from the user's
              * perspective even if the underlying fetch continues.
              */
-            result.abort(error);
-            request.abort(error);
+            handle.abort(timeoutError);
+            request.abort(abortReason);
         }, options.duration);
 
-        return result.promise.finally(cleanupTask);
+        return handle.promise.finally(cleanupTask);
     };
 }
 

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from "vite-plus/test";
 
-import { QueryError, type QueryErrorCause } from "../src/_error.ts";
+import { SchemaError } from "@standard-schema/utils";
 
 import { Query } from "../src/index.ts";
 import { createSchema } from "./helpers/schema.ts";
@@ -15,21 +15,15 @@ function mockFetch(fn: typeof fetch) {
     return vi.spyOn(globalThis, "fetch").mockImplementation(fn);
 }
 
-async function captureQueryError(promise: unknown): Promise<InstanceType<typeof Query.Error>> {
+async function captureThrownResponse(promise: unknown): Promise<Response> {
     try {
         await promise;
     } catch (error) {
-        expect(error).toBeInstanceOf(Query.Error);
-        return error as InstanceType<typeof Query.Error>;
+        expect(error).toBeInstanceOf(Response);
+        return error as Response;
     }
 
-    throw new Error("Expected Query.Error to be thrown");
-}
-
-function getHTTPDetails(error: InstanceType<typeof Query.Error>): QueryErrorCause["http"] {
-    expect(error.cause.type).toBe("http");
-
-    return error.cause.details as QueryErrorCause["http"];
+    throw new Error("Expected a non-ok Response to be thrown");
 }
 
 describe("Public API", () => {
@@ -38,12 +32,14 @@ describe("Public API", () => {
 
         expect(query).toBeTypeOf("function");
         expect(query.safe).toBeTypeOf("function");
-        expect(Query.Error).toBeTypeOf("function");
+        expect(Query.Request).toBeTypeOf("function");
+        expect(Query.Response).toBeTypeOf("function");
+        expect(Query.Promise).toBeTypeOf("function");
     });
 });
 
 describe("Non-2xx errors", () => {
-    test("Throw Query.Error with lazy statusError", async () => {
+    test("Throw the response with a readable JSON body", async () => {
         mockFetch(async () => {
             return new Response(JSON.stringify({ code: "missing" }), {
                 headers: { "content-type": "application/json" },
@@ -51,32 +47,27 @@ describe("Non-2xx errors", () => {
                 statusText: "Not Found",
             });
         });
-        const query = new Query({ retry: () => ({ should: false }) });
+        const query = new Query({ shouldRetry: () => false });
 
-        const error = await captureQueryError(query("https://example.com/missing"));
+        const response = await captureThrownResponse(query("https://example.com/missing"));
 
-        const details = getHTTPDetails(error);
-
-        expect(details.statusCode).toBe(404);
-        expect(details.statusText).toBe("Not Found");
-        await expect(details.statusError()).resolves.toEqual({ code: "missing" });
-        await expect(details.statusError()).resolves.toEqual({ code: "missing" });
+        expect(response.status).toBe(404);
+        expect(response.statusText).toBe("Not Found");
+        await expect(response.json()).resolves.toEqual({ code: "missing" });
     });
 
-    test("Reads text error bodies", async () => {
+    test("Read text error bodies", async () => {
         mockFetch(async () => {
             return new Response("plain failure", {
                 headers: { "content-type": "text/plain" },
                 status: 500,
             });
         });
-        const query = new Query({ retry: () => ({ should: false }) });
+        const query = new Query({ shouldRetry: () => false });
 
-        const error = await captureQueryError(query("https://example.com/failure"));
+        const response = await captureThrownResponse(query("https://example.com/failure"));
 
-        const details = getHTTPDetails(error);
-
-        await expect(details.statusError()).resolves.toBe("plain failure");
+        await expect(response.text()).resolves.toBe("plain failure");
     });
 });
 
@@ -104,12 +95,12 @@ describe("Retry", () => {
             return new Response("ok");
         });
         const query = new Query({
-            retry: (prev) => {
+            shouldRetry: (prev) => {
                 attempts.push({
                     no: prev.no,
                     status: prev.output.ok ? prev.output.data.status : undefined,
                 });
-                return prev.no === 1 ? { should: true, delay: 1 } : { should: false };
+                return prev.no === 1 ? 1 : false;
             },
         });
 
@@ -161,10 +152,10 @@ describe("Timeout and abort", () => {
     test("Throws timeout errors", async () => {
         vi.useFakeTimers();
         mockFetch(pendingFetch);
-        const query = new Query({ attemptTimeout: 11, retry: () => ({ should: false }) });
+        const query = new Query({ attemptTimeout: 11, shouldRetry: () => false });
 
         const promise = query("https://example.com/timeout");
-        const assertion = expect(promise).rejects.toMatchObject({ cause: { type: "timeout" } });
+        const assertion = expect(promise).rejects.toMatchObject({ name: "TimeoutError" });
         await vi.advanceTimersByTimeAsync(11);
 
         await assertion;
@@ -208,7 +199,7 @@ describe("JSON schema", () => {
         await expect(response.json(schema)).resolves.toEqual({ value: 1 });
     });
 
-    test("Throws Query.Error on schema failure", async () => {
+    test("Throws SchemaError on schema failure", async () => {
         mockFetch(async () => new Response(JSON.stringify({ value: "bad" })));
         const schema = createSchema<unknown, { value: number }>(() => ({
             issues: [{ message: "Invalid value" }],
@@ -217,22 +208,21 @@ describe("JSON schema", () => {
 
         const response = await query("https://example.com/schema-error");
 
-        await expect(response.json(schema)).rejects.toMatchObject({ cause: { type: "json" } });
+        await expect(response.json(schema)).rejects.toBeInstanceOf(SchemaError);
     });
 });
 
 describe("Safe mode", () => {
     test("Returns data or error branches", async () => {
         mockFetch(async () => new Response("failed", { status: 500 }));
-        const query = new Query({ retry: () => ({ should: false }) });
+        const query = new Query({ shouldRetry: () => false });
 
         const result = await query.safe("https://example.com/failure");
 
         expect(result.ok).toBe(false);
         if (!result.ok) {
-            expect(result.error).toBeInstanceOf(Query.Error);
-            expect(result.error).toBeInstanceOf(QueryError);
-            expect((result.error as QueryError).cause.type).toBe("http");
+            expect(result.error).toBeInstanceOf(Response);
+            expect((result.error as Response).status).toBe(500);
         }
     });
 });

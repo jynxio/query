@@ -10,6 +10,16 @@ function toRequest(input: RequestInfo | URL, init?: RequestInit): Request {
     return input instanceof Request ? input : new Request(input, init);
 }
 
+async function rejectionOf(promise: Promise<unknown>): Promise<unknown> {
+    try {
+        await promise;
+    } catch (error) {
+        return error;
+    }
+
+    throw new Error("Expected the promise to reject");
+}
+
 const pendingFetch: typeof fetch = (input, init) => {
     const request = toRequest(input, init);
 
@@ -45,9 +55,10 @@ describe("Retry decisions", () => {
         const fetchLike = vi.fn(async () => new Response("failure", { status: 500 }));
         const query = new Query(undefined, fetchLike);
 
-        await expect(query("https://example.com/post", { method: "POST" })).rejects.toMatchObject({
-            cause: { type: "http" },
-        });
+        const error = await rejectionOf(query("https://example.com/post", { method: "POST" }));
+
+        expect(error).toBeInstanceOf(Response);
+        expect((error as Response).status).toBe(500);
         expect(fetchLike).toHaveBeenCalledTimes(1);
     });
 
@@ -55,9 +66,10 @@ describe("Retry decisions", () => {
         const fetchLike = vi.fn(async () => new Response("failure", { status: 400 }));
         const query = new Query(undefined, fetchLike);
 
-        await expect(query("https://example.com/400")).rejects.toMatchObject({
-            cause: { type: "http" },
-        });
+        const error = await rejectionOf(query("https://example.com/400"));
+
+        expect(error).toBeInstanceOf(Response);
+        expect((error as Response).status).toBe(400);
         expect(fetchLike).toHaveBeenCalledTimes(1);
     });
 
@@ -81,13 +93,13 @@ describe("Retry decisions", () => {
         const query = new Query(
             {
                 overallTimeout: 50,
-                retry: () => ({ should: true, delay: 50 }),
+                shouldRetry: () => 50,
             },
             fetchLike,
         );
 
         await expect(query("https://example.com/no-time")).rejects.toMatchObject({
-            cause: { type: "timeout" },
+            name: "TimeoutError",
         });
         expect(fetchLike).toHaveBeenCalledTimes(1);
     });
@@ -112,7 +124,7 @@ describe("Timeout and abort interactions", () => {
             {
                 attemptTimeout: 10,
                 overallTimeout: 1_000,
-                retry: ({ no }) => (no === 1 ? { should: true, delay: 100 } : { should: false }),
+                shouldRetry: ({ no }) => (no === 1 ? 100 : false),
             },
             fetchLike,
         );
@@ -135,9 +147,9 @@ describe("Timeout and abort interactions", () => {
         vi.useFakeTimers();
         const reason = { source: "user" };
         const controller = new AbortController();
-        const retry = vi.fn(() => ({ should: false }) as const);
+        const shouldRetry = vi.fn(() => false as const);
         const fetchLike = vi.fn(() => new Promise<Response>(() => {})) as unknown as typeof fetch;
-        const query = new Query({ attemptTimeout: 10, retry }, fetchLike);
+        const query = new Query({ attemptTimeout: 10, shouldRetry }, fetchLike);
 
         const promise = query("https://example.com/abort-race", { signal: controller.signal });
         const assertion = expect(promise).rejects.toBe(reason);
@@ -146,15 +158,15 @@ describe("Timeout and abort interactions", () => {
         await vi.advanceTimersByTimeAsync(10);
 
         await assertion;
-        expect(retry).not.toHaveBeenCalled();
+        expect(shouldRetry).not.toHaveBeenCalled();
         expect(fetchLike).toHaveBeenCalledTimes(1);
     });
 
     test("User TimeoutError is not treated as a library timeout", async () => {
         const reason = new DOMException("User deadline", "TimeoutError");
         const controller = new AbortController();
-        const retry = vi.fn(() => ({ should: true, delay: 0 }) as const);
-        const query = new Query({ retry }, pendingFetch);
+        const shouldRetry = vi.fn(() => 0);
+        const query = new Query({ shouldRetry }, pendingFetch);
 
         const promise = query("https://example.com/user-timeout", { signal: controller.signal });
         const assertion = expect(promise).rejects.toBe(reason);
@@ -162,7 +174,7 @@ describe("Timeout and abort interactions", () => {
         controller.abort(reason);
 
         await assertion;
-        expect(retry).not.toHaveBeenCalled();
+        expect(shouldRetry).not.toHaveBeenCalled();
     });
 
     test("Overall timeout aborts the active request", async () => {
@@ -176,22 +188,20 @@ describe("Timeout and abort interactions", () => {
         const query = new Query({ attemptTimeout: Number.POSITIVE_INFINITY, overallTimeout: 10 }, fetchLike);
 
         const promise = query("https://example.com/overall-timeout");
-        const assertion = expect(promise).rejects.toMatchObject({ cause: { type: "timeout" } });
+        const assertion = expect(promise).rejects.toMatchObject({ name: "TimeoutError" });
         await vi.advanceTimersByTimeAsync(10);
 
         await assertion;
         expect(seenSignal).toBeDefined();
-        const signal = seenSignal as AbortSignal;
-        expect(signal.aborted).toBe(true);
-        expect((signal.reason as InstanceType<typeof Query.Error>).cause.type).toBe("timeout");
+        expect((seenSignal as AbortSignal).aborted).toBe(true);
     });
 
     test("A one millisecond attempt timeout settles", async () => {
         vi.useFakeTimers();
-        const query = new Query({ attemptTimeout: 1, retry: () => ({ should: false }) }, pendingFetch);
+        const query = new Query({ attemptTimeout: 1, shouldRetry: () => false }, pendingFetch);
 
         const promise = query("https://example.com/short-timeout");
-        const assertion = expect(promise).rejects.toMatchObject({ cause: { type: "timeout" } });
+        const assertion = expect(promise).rejects.toMatchObject({ name: "TimeoutError" });
         await vi.advanceTimersByTimeAsync(1);
 
         await assertion;

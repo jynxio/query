@@ -13,7 +13,7 @@ describe("RequestInit semantics", () => {
         Object.defineProperty(init, "method", { value: "PUT", enumerable: false });
 
         let seenRequest: Request | undefined;
-        const query = new Query({ retry: () => ({ should: false }) }, async (input) => {
+        const query = new Query({ shouldRetry: () => false }, async (input) => {
             seenRequest = input instanceof Request ? input : new Request(input);
             return new Response("ok");
         });
@@ -32,10 +32,10 @@ describe("RequestInit semantics", () => {
             seenSignal = request.signal;
             return new Promise<Response>(() => {});
         };
-        const query = new Query({ attemptTimeout: 1, retry: () => ({ should: false }) }, fetchLike);
+        const query = new Query({ attemptTimeout: 1, shouldRetry: () => false }, fetchLike);
 
         const promise = query(new Request("https://example.com/unabortable"));
-        const assertion = expect(promise).rejects.toMatchObject({ cause: { type: "timeout" } });
+        const assertion = expect(promise).rejects.toMatchObject({ name: "TimeoutError" });
         await vi.advanceTimersByTimeAsync(1);
 
         await assertion;
@@ -56,11 +56,11 @@ describe("RequestInit semantics", () => {
                 });
             });
         };
-        const query = new Query({ attemptTimeout: 1, retry: () => ({ should: false }) }, fetchLike);
+        const query = new Query({ attemptTimeout: 1, shouldRetry: () => false }, fetchLike);
         const init = Object.create({ method: "POST" }) as RequestInit;
 
         const promise = query(new Request("https://example.com/abortable"), init);
-        const assertion = expect(promise).rejects.toMatchObject({ cause: { type: "timeout" } });
+        const assertion = expect(promise).rejects.toMatchObject({ name: "TimeoutError" });
         await vi.advanceTimersByTimeAsync(1);
 
         await assertion;
@@ -73,7 +73,7 @@ describe("RequestInit semantics", () => {
         controller.abort({ source: "base" });
         const base = new Request("https://example.com/clear-signal", { signal: controller.signal });
         let seenSignal: AbortSignal | undefined;
-        const query = new Query({ retry: () => ({ should: false }) }, async (input) => {
+        const query = new Query({ shouldRetry: () => false }, async (input) => {
             const request = input instanceof Request ? input : new Request(input);
             seenSignal = request.signal;
             return new Response("ok");

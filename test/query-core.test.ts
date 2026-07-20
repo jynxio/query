@@ -2,7 +2,7 @@ import { describe, expect, test, vi } from "vite-plus/test";
 
 import { Query } from "../src/index.ts";
 
-const NO_RETRY = { retry: () => ({ should: false }) as const };
+const NO_RETRY = { shouldRetry: () => false as const };
 
 describe("Fetch-compatible call behavior", () => {
     test("Invalid request input rejects instead of throwing synchronously", async () => {
@@ -22,18 +22,18 @@ describe("Fetch-compatible call behavior", () => {
 
     test("A synchronous custom fetch failure bypasses retry", async () => {
         const reason = { source: "sync fetch" };
-        const retry = vi.fn(() => ({ should: true, delay: 0 }) as const);
+        const shouldRetry = vi.fn(() => 0);
         const fetchLike = vi.fn(() => {
             throw reason;
         }) as unknown as typeof fetch;
-        const query = new Query({ retry }, fetchLike);
+        const query = new Query({ shouldRetry }, fetchLike);
 
         const promise = query("https://example.com/sync-failure");
         expect(promise).toBeInstanceOf(Promise);
 
         await expect(promise).rejects.toBe(reason);
         expect(fetchLike).toHaveBeenCalledTimes(1);
-        expect(retry).not.toHaveBeenCalled();
+        expect(shouldRetry).not.toHaveBeenCalled();
     });
 
     test("Preserves arbitrary asynchronous rejection reasons", async () => {
@@ -60,7 +60,7 @@ describe("Safe mode", () => {
         expect(fetchLike).toHaveBeenCalledTimes(1);
     });
 
-    test("Preserves the original library error object", async () => {
+    test("Preserves the thrown response object", async () => {
         const query = new Query(
             NO_RETRY,
             async () => new Response("failure", { status: 500, statusText: "Failure" }),
@@ -75,11 +75,12 @@ describe("Safe mode", () => {
 
         const result = await query.safe("https://example.com/http-error");
 
-        expect(thrown).toBeInstanceOf(Query.Error);
+        expect(thrown).toBeInstanceOf(Response);
+        expect((thrown as Response).status).toBe(500);
         expect(result.ok).toBe(false);
         if (!result.ok) {
-            expect(result.error).toBeInstanceOf(Query.Error);
-            expect((result.error as InstanceType<typeof Query.Error>).cause.type).toBe("http");
+            expect(result.error).toBeInstanceOf(Response);
+            expect((result.error as Response).status).toBe(500);
         }
     });
 });

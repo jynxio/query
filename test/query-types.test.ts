@@ -1,5 +1,4 @@
 import type { StandardSchemaV1 } from "@standard-schema/spec";
-import type { SchemaError } from "@standard-schema/utils";
 import type { QueryPromise } from "../src/_promise.ts";
 
 import { describe, expectTypeOf, test } from "vite-plus/test";
@@ -21,29 +20,22 @@ describe("Fetch shape types", () => {
 });
 
 describe("Query types", () => {
-    test("Exposes constructor and error types", () => {
+    test("Exposes constructor and static members", () => {
         function assertConstructors() {
             const ctor: QueryConstructor = Query;
             const query = new ctor(
                 {
                     attemptTimeout: 1,
                     overallTimeout: 2,
-                    retry: () => ({ should: false }),
+                    shouldRetry: () => false,
+                    shouldThrow: () => true,
                 },
                 async () => new Response(),
             );
 
-            new Query.Error("timeout");
-            new Query.Error("abort");
-            new Query.Error("unknown", new Error("unknown"));
-            new Query.Error("http", {
-                response: {} as QueryResponse,
-                statusCode: 500,
-                statusText: "Internal Server Error",
-                statusError: async () => null,
-            });
-            new Query.Error("json", {} as SchemaError);
-
+            expectTypeOf(Query.Request).toEqualTypeOf<QueryConstructor["Request"]>();
+            expectTypeOf(Query.Response).toEqualTypeOf<QueryConstructor["Response"]>();
+            expectTypeOf(Query.Promise).toEqualTypeOf<QueryConstructor["Promise"]>();
             expectTypeOf(query).toEqualTypeOf<QueryInstance>();
         }
 
@@ -110,30 +102,19 @@ describe("Query types", () => {
         >();
     });
 
-    test("Exposes retry and error details", () => {
-        type PrevAttempt = Parameters<QueryOptions["retry"]>[0];
-        type RetryResult = ReturnType<QueryOptions["retry"]>;
-
-        const jsonError = new Query.Error("json", {} as SchemaError);
-        const httpError = new Query.Error("http", {
-            response: {} as QueryResponse,
-            statusCode: 500,
-            statusText: "Internal Server Error",
-            statusError: async () => null,
-        });
+    test("Exposes retry and throw option details", () => {
+        type PrevAttempt = Parameters<QueryOptions["shouldRetry"]>[0];
+        type RetryResult = ReturnType<QueryOptions["shouldRetry"]>;
 
         expectTypeOf<PrevAttempt["no"]>().toEqualTypeOf<number>();
         expectTypeOf<PrevAttempt["input"]>().toEqualTypeOf<Request>();
         expectTypeOf<PrevAttempt["output"]>().toEqualTypeOf<
             { ok: true; data: QueryResponse } | { ok: false; error: unknown }
         >();
-        expectTypeOf<RetryResult>().toEqualTypeOf<
-            Readonly<{ should: false } | { should: true; delay: number }>
-        >();
-        expectTypeOf(jsonError.cause.details).toEqualTypeOf<SchemaError>();
-        expectTypeOf<ReturnType<typeof httpError.cause.details.statusError>>().toEqualTypeOf<
-            QueryPromise<JSONData>
-        >();
+        expectTypeOf<RetryResult>().toEqualTypeOf<false | number>();
+
+        expectTypeOf<Parameters<QueryOptions["shouldThrow"]>[0]>().toEqualTypeOf<QueryResponse>();
+        expectTypeOf<ReturnType<QueryOptions["shouldThrow"]>>().toEqualTypeOf<boolean>();
     });
 
     test("Exposes JSON output types", () => {

@@ -36,7 +36,7 @@ function withRetry(fn: NormalizedFetch, options: Required<QueryOptions>): Normal
 
             // Abort caused by the overall timeout.
             const isOverallTimeoutAborted = isAborted && abortReason === OVERALL_TIMEOUT_SYM;
-            if (isOverallTimeoutAborted) throw abortReason;
+            if (isOverallTimeoutAborted) throw createTimeoutError();
 
             // Abort initiated by the user.
             const isUserManuallyAbort = isAborted && abortReason !== ATTEMPT_TIMEOUT_SYM;

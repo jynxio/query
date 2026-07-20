@@ -1,15 +1,15 @@
 import type { QueryOptions } from "./_options.ts";
-import type { QueryPromise } from "./_promise.ts";
 import type { GlobalThisFetch, Safe } from "./_types.ts";
 
 import { DEFAULT_QUERY_OPTIONS } from "./_options.ts";
 import { withRetry } from "./_hooks/with-retry.ts";
 import { withHTTP } from "./_hooks/with-http.ts";
 import { withSafe } from "./_hooks/with-safe.ts";
-import { QueryResponse } from "./_response.ts";
 import { withExternalize, withInternalize } from "./_hooks/with-transform.ts";
 import { pipe } from "./_misc/pipe.ts";
-import { QueryError } from "./_error.ts";
+import { QueryRequest } from "./_request.ts";
+import { QueryResponse } from "./_response.ts";
+import { QueryPromise } from "./_promise.ts";
 
 type QueryCall<Result> = {
     /**
@@ -22,12 +22,17 @@ type Query = BaseQuery & { safe: SafeQuery };
 type BaseQuery = QueryCall<QueryResponse>;
 type SafeQuery = QueryCall<Safe<QueryResponse, unknown>>;
 type QueryConstructor = {
+    Promise: typeof QueryPromise;
+    Request: typeof QueryRequest;
+    Response: typeof QueryResponse;
+
     new (options?: Partial<QueryOptions>, fn?: GlobalThisFetch): Query;
-    Error: typeof QueryError;
 };
 
 const Query = class {
-    static readonly Error: typeof QueryError = QueryError;
+    static readonly Promise: typeof QueryPromise = QueryPromise;
+    static readonly Request: typeof QueryRequest = QueryRequest;
+    static readonly Response: typeof QueryResponse = QueryResponse;
 
     constructor(options?: Partial<QueryOptions>, fn?: GlobalThisFetch) {
         type Cache = { baseQuery?: BaseQuery; safeQuery?: SafeQuery };

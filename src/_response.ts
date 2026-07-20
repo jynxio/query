@@ -1,12 +1,8 @@
 import type { JSONData } from "./_types.ts";
 import type { StandardSchemaV1 } from "@standard-schema/spec";
 
-import { QueryError } from "./_error.ts";
 import { SchemaError } from "@standard-schema/utils";
 
-/**
- * @internal
- */
 class QueryResponse extends Response {
     static readonly cast = cast;
     public readonly json = json;
@@ -29,7 +25,7 @@ function clone(this: QueryResponse): QueryResponse {
     return Object.assign(response, { json, clone }) as QueryResponse;
 }
 
-function json(): Promise<JSONData>;
+function json<T = JSONData>(): Promise<T>;
 function json<T extends StandardSchemaV1>(schema: T): Promise<StandardSchemaV1.InferOutput<T>>;
 async function json<T extends StandardSchemaV1>(
     this: QueryResponse,
@@ -41,7 +37,7 @@ async function json<T extends StandardSchemaV1>(
     const validatedJSONData = await schema["~standard"].validate(jsonData);
     if (!validatedJSONData.issues) return validatedJSONData.value;
 
-    throw new QueryError("json", new SchemaError(validatedJSONData.issues));
+    throw new SchemaError(validatedJSONData.issues);
 }
 
 export { QueryResponse };

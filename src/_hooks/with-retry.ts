@@ -3,23 +3,23 @@ import type { QueryResponse } from "../_response.ts";
 import type { NormalizedFetch } from "../_types.ts";
 import type { QueryRequest } from "../_request.ts";
 
-import { QueryError } from "../_error.ts";
 import { sleep } from "../_misc/schedule.ts";
 import { withTimeout } from "./with-timeout.ts";
+import { createTimeoutError } from "../_misc/error.ts";
 
-const OVERALL_TIMEOUT_ERROR = new QueryError("timeout");
-const ATTEMPT_TIMEOUT_ERROR = new QueryError("timeout");
+const OVERALL_TIMEOUT_SYM = Symbol("overall timeout");
+const ATTEMPT_TIMEOUT_SYM = Symbol("attempt timeout");
 
 function withRetry(fn: NormalizedFetch, options: Required<QueryOptions>): NormalizedFetch {
     const duration = options.overallTimeout;
-    const wrapError = () => OVERALL_TIMEOUT_ERROR;
+    const wrapError = () => OVERALL_TIMEOUT_SYM;
 
     return withTimeout(fnWithRetry, { duration, wrapError });
 
     async function fnWithRetry(request: QueryRequest): Promise<QueryResponse> {
         const startTime = performance.now();
         const duration = options.attemptTimeout;
-        const wrapError = () => ATTEMPT_TIMEOUT_ERROR;
+        const wrapError = () => ATTEMPT_TIMEOUT_SYM;
 
         for (let attemptNo = 1; ; attemptNo++) {
             const input = request.clone();
@@ -35,11 +35,11 @@ function withRetry(fn: NormalizedFetch, options: Required<QueryOptions>): Normal
             const abortReason = input.signal.reason as unknown;
 
             // Abort caused by the overall timeout.
-            const isOverallTimeoutAborted = isAborted && abortReason === OVERALL_TIMEOUT_ERROR;
+            const isOverallTimeoutAborted = isAborted && abortReason === OVERALL_TIMEOUT_SYM;
             if (isOverallTimeoutAborted) throw abortReason;
 
             // Abort initiated by the user.
-            const isUserManuallyAbort = isAborted && abortReason !== ATTEMPT_TIMEOUT_ERROR;
+            const isUserManuallyAbort = isAborted && abortReason !== ATTEMPT_TIMEOUT_SYM;
             if (isUserManuallyAbort) throw abortReason;
 
             // Stop if `options.retry` disables retries.
@@ -50,7 +50,7 @@ function withRetry(fn: NormalizedFetch, options: Required<QueryOptions>): Normal
 
             // Ensure sufficient time remains for a retry.
             const isTimeEnough = performance.now() - startTime + retry.delay < options.overallTimeout;
-            if (!isTimeEnough) throw new QueryError("timeout");
+            if (!isTimeEnough) throw createTimeoutError();
 
             // Release the response body before retrying.
             if (output.ok) output.data.body?.cancel().catch(() => {});

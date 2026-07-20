@@ -42,7 +42,8 @@ const Query = class {
         const settledOptions = {
             attemptTimeout: options?.attemptTimeout ?? DEFAULT_QUERY_OPTIONS.attemptTimeout,
             overallTimeout: options?.overallTimeout ?? DEFAULT_QUERY_OPTIONS.overallTimeout,
-            retry: options?.retry ?? DEFAULT_QUERY_OPTIONS.retry,
+            shouldRetry: options?.shouldRetry ?? DEFAULT_QUERY_OPTIONS.shouldRetry,
+            shouldThrow: options?.shouldThrow ?? DEFAULT_QUERY_OPTIONS.shouldThrow,
         } satisfies QueryOptions;
 
         return Object.assign(baseQuery, { safe: safeQuery });
@@ -51,7 +52,7 @@ const Query = class {
             cache.baseQuery ??= pipe(settledFn)
                 .next(withInternalize)
                 .next(withRetry, settledOptions)
-                .next(withHTTP)
+                .next(withHTTP, settledOptions)
                 .next(withExternalize)
                 .done();
 
@@ -62,7 +63,7 @@ const Query = class {
             cache.safeQuery ??= pipe(settledFn)
                 .next(withInternalize)
                 .next(withRetry, settledOptions)
-                .next(withHTTP)
+                .next(withHTTP, settledOptions)
                 .next(withExternalize)
                 .next(withSafe)
                 .done();

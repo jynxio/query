@@ -1,13 +1,14 @@
+import type { QueryOptions } from "../_options.ts";
 import type { NormalizedFetch } from "../_types.ts";
 
-function withHTTP(fn: NormalizedFetch): NormalizedFetch {
+function withHTTP(fn: NormalizedFetch, options: Required<QueryOptions>): NormalizedFetch {
     return async function (request) {
         const response = await fn(request);
+        const should = options.shouldThrow(response);
 
-        if (response.ok) return response;
-        if (response.type === "opaque") return response;
+        if (should) throw response;
 
-        throw response;
+        return response;
     };
 }
 

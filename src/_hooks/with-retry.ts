@@ -43,18 +43,18 @@ function withRetry(fn: NormalizedFetch, options: Required<QueryOptions>): Normal
             if (isUserManuallyAbort) throw abortReason;
 
             // Stop if `options.retry` disables retries.
-            const retry = options.retry({ no: attemptNo, input, output });
-            if (!retry.should)
+            const delay = options.shouldRetry({ no: attemptNo, input, output });
+            if (delay === false)
                 if (output.ok) return output.data;
                 else throw output.error;
 
             // Ensure sufficient time remains for a retry.
-            const isTimeEnough = performance.now() - startTime + retry.delay < options.overallTimeout;
+            const isTimeEnough = performance.now() - startTime + delay < options.overallTimeout;
             if (!isTimeEnough) throw createTimeoutError();
 
             // Release the response body before retrying.
             if (output.ok) output.data.body?.cancel().catch(() => {});
-            await sleep(retry.delay, request.signal);
+            await sleep(delay, request.signal);
         }
     }
 }

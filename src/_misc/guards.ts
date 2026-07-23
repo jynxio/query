@@ -31,10 +31,6 @@ function isRequestInitEmpty(i: ConstructorParameters<typeof Request>[1]): boolea
     return REQUEST_INIT_MEMBERS.every((item) => Reflect.get(i, item) === undefined);
 }
 
-function isError(i: unknown): i is Error {
-    return i instanceof Error;
-}
-
 /**
  * Copied from Ky.
  *
@@ -47,16 +43,4 @@ function isRequest(i: unknown): i is Request {
     return false;
 }
 
-/**
- * Copied from Ky.
- *
- * @see {@link https://github.com/sindresorhus/ky/blob/61d6d66d27911001b9b4d57ab93139f9ad61384b/source/core/Ky.ts#L84}
- */
-function isResponse(i: unknown): i is Response {
-    if (typeof globalThis.Response === "function" && i instanceof globalThis.Response) return true;
-    if (Object.prototype.toString.call(i) === "[object Response]") return true;
-
-    return false;
-}
-
-export { isRequest, isResponse, isRequestInitEmpty, isError };
+export { isRequest, isRequestInitEmpty };

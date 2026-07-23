@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, test, vi } from "vite-plus/test";
 
 import { isRequestInitEmpty } from "../src/_misc/guards.ts";
-import { memoize } from "../src/_misc/memoize.ts";
 import { schedule, sleep } from "../src/_misc/schedule.ts";
 
 afterEach(() => {
@@ -55,38 +54,6 @@ describe("sleep", () => {
         await vi.advanceTimersByTimeAsync(10);
 
         await assertion;
-    });
-});
-
-describe("memoize", () => {
-    test("Shares pending work and caches fulfillment", async () => {
-        let resolve: ((value: number) => void) | undefined;
-        const fn = vi.fn(
-            () =>
-                new Promise<number>((resolvePromise) => {
-                    resolve = resolvePromise;
-                }),
-        );
-        const memoized = memoize(fn);
-
-        const first = memoized();
-        const concurrent = memoized();
-        expect(concurrent).toBe(first);
-
-        resolve?.(42);
-        await expect(first).resolves.toBe(42);
-        await expect(memoized()).resolves.toBe(42);
-        expect(fn).toHaveBeenCalledOnce();
-    });
-
-    test("Retries immediately after rejection", async () => {
-        const reason = { source: "first" };
-        const fn = vi.fn<() => Promise<number>>().mockRejectedValueOnce(reason).mockResolvedValueOnce(42);
-        const memoized = memoize(fn);
-
-        await expect(memoized()).rejects.toBe(reason);
-        await expect(memoized()).resolves.toBe(42);
-        expect(fn).toHaveBeenCalledTimes(2);
     });
 });
 

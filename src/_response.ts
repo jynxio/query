@@ -25,7 +25,7 @@ function clone(this: QueryResponse): QueryResponse {
     return Object.assign(response, { json, clone }) as QueryResponse;
 }
 
-function json<T = JSONData>(): Promise<T>;
+function json(): Promise<JSONData>;
 function json<T extends StandardSchemaV1>(schema: T): Promise<StandardSchemaV1.InferOutput<T>>;
 async function json<T extends StandardSchemaV1>(
     this: QueryResponse,

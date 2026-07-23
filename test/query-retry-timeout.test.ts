@@ -105,6 +105,63 @@ describe("Retry decisions", () => {
     });
 });
 
+describe("Request body across retries", () => {
+    /**
+     * Regression: `QueryRequest.prototype.clone` used to reconstruct via `new Request(this)`, which consumes the source
+     * body. The first attempt therefore disturbed the root request and the second `clone()` threw
+     * `TypeError: Cannot construct a Request with a Request object that has already been used`. Retrying any request
+     * with a body (e.g. the default-retryable PUT) must re-send an intact body on every attempt.
+     */
+    test("Re-sends a URL+init body on every retry (abortable clone path)", async () => {
+        const bodies: string[] = [];
+        const fetchLike = vi.fn<typeof fetch>(async (input, init) => {
+            const request = input instanceof Request ? input : new Request(input, init);
+            bodies.push(await request.text());
+            return bodies.length < 3 ? new Response("retry", { status: 500 }) : new Response("ok");
+        });
+        const query = new Query({ shouldRetry: ({ no }) => (no <= 2 ? 0 : false) }, fetchLike);
+
+        const response = await query("https://example.com/put", {
+            method: "PUT",
+            body: "payload-123",
+        });
+
+        expect(await response.text()).toBe("ok");
+        expect(fetchLike).toHaveBeenCalledTimes(3);
+        expect(bodies).toEqual(["payload-123", "payload-123", "payload-123"]);
+    });
+
+    test("Re-sends an existing Request's body on every retry (unabortable clone path)", async () => {
+        const bodies: string[] = [];
+        const fetchLike = vi.fn<typeof fetch>(async (input, init) => {
+            const request = input instanceof Request ? input : new Request(input, init);
+            bodies.push(await request.text());
+            return bodies.length < 3 ? new Response("retry", { status: 500 }) : new Response("ok");
+        });
+        const query = new Query({ shouldRetry: ({ no }) => (no <= 2 ? 0 : false) }, fetchLike);
+
+        const response = await query(
+            new Request("https://example.com/put", { method: "PUT", body: "payload-123" }),
+        );
+
+        expect(await response.text()).toBe("ok");
+        expect(fetchLike).toHaveBeenCalledTimes(3);
+        expect(bodies).toEqual(["payload-123", "payload-123", "payload-123"]);
+    });
+
+    test("Retrying a body request never throws on cloning the used source", async () => {
+        const fetchLike = vi.fn<typeof fetch>(async () => new Response("retry", { status: 500 }));
+        const query = new Query({ shouldRetry: ({ no }) => (no <= 2 ? 0 : false) }, fetchLike);
+
+        const error = await rejectionOf(query("https://example.com/put", { method: "PUT", body: "x" }));
+
+        // The final rejection is the exhausted 500 Response, never a body-reuse TypeError.
+        expect(error).toBeInstanceOf(Response);
+        expect((error as Response).status).toBe(500);
+        expect(fetchLike).toHaveBeenCalledTimes(3);
+    });
+});
+
 describe("Timeout and abort interactions", () => {
     test("A per-attempt timeout can retry after the configured delay", async () => {
         vi.useFakeTimers();

@@ -59,7 +59,15 @@ class AbortableQueryRequest extends Request {
         }
 
         function clone(this: AbortableQueryRequest): AbortableQueryRequest {
-            return new AbortableQueryRequest(this);
+            /**
+             * Clone before creating a new instance.
+             *
+             * @remarks
+             * Calling `new Request(oldReq)` directly would consume `oldReq`.
+             *
+             * @see {@link https://fetch.spec.whatwg.org/#request-class | From "Let inputBody be input's request's body if input is a Request object" to "Set this's request's body to finalBody"}
+             */
+            return new AbortableQueryRequest(Request.prototype.clone.call(this));
         }
     }
 }
@@ -75,7 +83,10 @@ class UnabortableQueryRequest extends Request {
         this.isAbortable = false;
         this.abort = function (_reason?: unknown) {};
         this.clone = function (this: UnabortableQueryRequest) {
-            return new UnabortableQueryRequest(this);
+            /**
+             * Clone before creating a new instance.
+             */
+            return new UnabortableQueryRequest(Request.prototype.clone.call(this));
         };
     }
 }

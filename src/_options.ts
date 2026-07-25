@@ -46,9 +46,18 @@ type Options = {
     readonly shouldThrow: (response: QueryResponse) => boolean;
 };
 
-const RETRY_COUNT = 2;
-const RETRY_STATUS = new Set([408, 413, 429, 500, 502, 503, 504]);
-const RETRY_METHOD = new Set(["get", "put", "head", "delete", "options", "trace"]);
+const RETRY = {
+    COUNT: 2,
+
+    LOCAL_JITTER_BASE: 300,
+
+    REMOTE_JITTER_CAP: 1_000,
+    REMOTE_JITTER_RATIO: 0.25,
+
+    STATUS: new Set([408, 413, 429, 500, 502, 503, 504]),
+    METHOD: new Set(["get", "put", "head", "delete", "options", "trace"]),
+} as const;
+
 const OPTIONS = {
     shouldRetry,
     shouldThrow,
@@ -75,7 +84,8 @@ function shouldThrow(response: QueryResponse): boolean {
  * @remarks
  * Retries twice for GET, PUT, HEAD, DELETE, OPTIONS, and TRACE.
  * Retries responses with status 408, 413, 429, 500, 502, 503, or 504.
- * Uses Retry-After first, then falls back to 300 ms and 600 ms.
+ * Uses Retry-After plus up to 25% jitter capped at 1,000 ms.
+ * Otherwise, uses full jitter over 300 ms and 600 ms exponential backoff windows.
  */
 function shouldRetry(prevAttempt: {
     readonly no: number;
@@ -83,23 +93,23 @@ function shouldRetry(prevAttempt: {
     readonly output: Safe<QueryResponse, unknown>;
 }): false | number {
     const attemptCountSoFar = prevAttempt.no;
-    if (attemptCountSoFar > RETRY_COUNT) return false;
+    if (attemptCountSoFar > RETRY.COUNT) return false;
 
-    const isRetryableMethod = RETRY_METHOD.has(prevAttempt.input.method.toLowerCase());
+    const isRetryableMethod = RETRY.METHOD.has(prevAttempt.input.method.toLowerCase());
     if (!isRetryableMethod) return false;
 
-    const localDelay = 300 * 2 ** (attemptCountSoFar - 1);
+    const localDelay = Math.random() * RETRY.LOCAL_JITTER_BASE * 2 ** (attemptCountSoFar - 1);
     if (!prevAttempt.output.ok) return localDelay;
 
-    const isRetryableStatus = RETRY_STATUS.has(prevAttempt.output.data.status);
+    const isRetryableStatus = RETRY.STATUS.has(prevAttempt.output.data.status);
     if (!isRetryableStatus) return false;
 
-    const remoteDelay = parseRetryAfterField(prevAttempt.output.data);
+    const remoteDelay = jitterRetryAfter(parseRetryAfter(prevAttempt.output.data));
     if (remoteDelay === undefined) return localDelay;
 
     return remoteDelay;
 
-    function parseRetryAfterField(response: Response): number | undefined {
+    function parseRetryAfter(response: Response): number | undefined {
         const field = response.headers.get("Retry-After");
         if (!field) return;
 
@@ -108,6 +118,15 @@ function shouldRetry(prevAttempt: {
 
         const date = Date.parse(field);
         if (Number.isFinite(date)) return Math.max(0, date - Date.now());
+    }
+
+    function jitterRetryAfter(ms?: number): undefined | number {
+        if (ms === undefined) return;
+
+        const jitterWindow = Math.min(RETRY.REMOTE_JITTER_RATIO * ms, RETRY.REMOTE_JITTER_CAP);
+        const jitterValue = Math.random() * jitterWindow;
+
+        return ms + jitterValue;
     }
 }
 

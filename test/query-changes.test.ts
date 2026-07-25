@@ -74,6 +74,7 @@ describe("Non-2xx errors", () => {
 describe("Retry", () => {
     test("Retries default GET 500 twice", async () => {
         vi.useFakeTimers();
+        vi.spyOn(Math, "random").mockReturnValue(0.5);
         const spy = mockFetch(async () => {
             if (spy.mock.calls.length < 3) return new Response("retry", { status: 500 });
             return new Response("ok");
@@ -81,7 +82,7 @@ describe("Retry", () => {
         const query = new Query();
 
         const promise = query("https://example.com/retry");
-        await vi.advanceTimersByTimeAsync(900);
+        await vi.advanceTimersByTimeAsync(450);
         const response = await promise;
 
         expect(await response.text()).toBe("ok");
@@ -115,6 +116,7 @@ describe("Retry", () => {
 
     test("Cancels failed response bodies", async () => {
         vi.useFakeTimers();
+        vi.spyOn(Math, "random").mockReturnValue(0.5);
         let didCancel = false;
         mockFetch(async () => {
             if (!didCancel) {
@@ -128,7 +130,7 @@ describe("Retry", () => {
         const query = new Query();
 
         const promise = query("https://example.com/cancel");
-        await vi.advanceTimersByTimeAsync(300);
+        await vi.advanceTimersByTimeAsync(150);
         const response = await promise;
 
         expect(await response.text()).toBe("ok");

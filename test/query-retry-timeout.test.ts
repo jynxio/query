@@ -3,6 +3,7 @@ import { afterEach, describe, expect, test, vi } from "vite-plus/test";
 import { Query } from "../src/index.ts";
 
 afterEach(() => {
+    vi.restoreAllMocks();
     vi.useRealTimers();
 });
 
@@ -36,6 +37,7 @@ const pendingFetch: typeof fetch = (input, init) => {
 describe("Retry decisions", () => {
     test("Default retry handles asynchronous failures", async () => {
         vi.useFakeTimers();
+        vi.spyOn(Math, "random").mockReturnValue(0.5);
         const reason = { source: "network" };
         const fetchLike = vi
             .fn<typeof fetch>()
@@ -45,8 +47,16 @@ describe("Retry decisions", () => {
         const query = new Query(undefined, fetchLike);
 
         const promise = query("https://example.com/async-retry");
-        await vi.advanceTimersByTimeAsync(900);
+        await vi.advanceTimersByTimeAsync(149);
+        expect(fetchLike).toHaveBeenCalledTimes(1);
 
+        await vi.advanceTimersByTimeAsync(1);
+        expect(fetchLike).toHaveBeenCalledTimes(2);
+
+        await vi.advanceTimersByTimeAsync(299);
+        expect(fetchLike).toHaveBeenCalledTimes(2);
+
+        await vi.advanceTimersByTimeAsync(1);
         await expect(promise).resolves.toBeInstanceOf(Response);
         expect(fetchLike).toHaveBeenCalledTimes(3);
     });
@@ -75,6 +85,7 @@ describe("Retry decisions", () => {
 
     test("Honors Retry-After zero", async () => {
         vi.useFakeTimers();
+        vi.spyOn(Math, "random").mockReturnValue(0.5);
         const fetchLike = vi
             .fn<typeof fetch>()
             .mockResolvedValueOnce(new Response("retry", { status: 503, headers: { "Retry-After": "0" } }))
@@ -84,6 +95,42 @@ describe("Retry decisions", () => {
         const promise = query("https://example.com/retry-after");
         await vi.advanceTimersByTimeAsync(0);
 
+        await expect(promise).resolves.toBeInstanceOf(Response);
+        expect(fetchLike).toHaveBeenCalledTimes(2);
+    });
+
+    test("Adds proportional jitter after Retry-After", async () => {
+        vi.useFakeTimers();
+        vi.spyOn(Math, "random").mockReturnValue(0.5);
+        const fetchLike = vi
+            .fn<typeof fetch>()
+            .mockResolvedValueOnce(new Response("retry", { status: 503, headers: { "Retry-After": "2" } }))
+            .mockResolvedValueOnce(new Response("ok"));
+        const query = new Query(undefined, fetchLike);
+
+        const promise = query("https://example.com/retry-after-jitter");
+        await vi.advanceTimersByTimeAsync(2_249);
+        expect(fetchLike).toHaveBeenCalledTimes(1);
+
+        await vi.advanceTimersByTimeAsync(1);
+        await expect(promise).resolves.toBeInstanceOf(Response);
+        expect(fetchLike).toHaveBeenCalledTimes(2);
+    });
+
+    test("Caps the Retry-After jitter window", async () => {
+        vi.useFakeTimers();
+        vi.spyOn(Math, "random").mockReturnValue(0.5);
+        const fetchLike = vi
+            .fn<typeof fetch>()
+            .mockResolvedValueOnce(new Response("retry", { status: 503, headers: { "Retry-After": "8" } }))
+            .mockResolvedValueOnce(new Response("ok"));
+        const query = new Query(undefined, fetchLike);
+
+        const promise = query("https://example.com/retry-after-jitter-cap");
+        await vi.advanceTimersByTimeAsync(8_499);
+        expect(fetchLike).toHaveBeenCalledTimes(1);
+
+        await vi.advanceTimersByTimeAsync(1);
         await expect(promise).resolves.toBeInstanceOf(Response);
         expect(fetchLike).toHaveBeenCalledTimes(2);
     });

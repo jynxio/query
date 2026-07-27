@@ -1,5 +1,6 @@
-import { isRequest, isRequestInitEmpty } from "./_misc/guards.ts";
-import { createAnyAbortSignal } from "./_misc/signal.ts";
+import { createAnyAbortSignal } from "./_misc/create-any-abort-signal.ts";
+import { isRequestOptionsEmpty } from "./_misc/is-request-options-empty.ts";
+import { isRequest } from "./_misc/is-request.ts";
 
 type QueryRequestConstructor = {
     /**
@@ -22,7 +23,7 @@ type QueryRequest = AbortableQueryRequest | UnabortableQueryRequest;
 const QueryRequest = class {
     constructor(...[base, options]: ConstructorParameters<typeof Request>) {
         const isBaseRequest = isRequest(base);
-        const isOptionsEmpty = isRequestInitEmpty(options);
+        const isOptionsEmpty = isRequestOptionsEmpty(options);
         const isUnabortable = isBaseRequest && isOptionsEmpty;
 
         if (isUnabortable) return new UnabortableQueryRequest(base, options);

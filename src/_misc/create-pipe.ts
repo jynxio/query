@@ -6,7 +6,7 @@ type PipeObject<Source> = {
     ): PipeObject<Next>;
 };
 
-function pipe<T>(source: T): PipeObject<T> {
+function createPipe<T>(source: T): PipeObject<T> {
     return { next, done };
 
     function done(): T {
@@ -17,8 +17,8 @@ function pipe<T>(source: T): PipeObject<T> {
         fn: (...args: [T, ...Args]) => Next,
         ...args: Args
     ): PipeObject<Next> {
-        return pipe(fn(source, ...args));
+        return createPipe(fn(source, ...args));
     }
 }
 
-export { pipe };
+export { createPipe };

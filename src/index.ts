@@ -6,7 +6,7 @@ import { withRetry } from "./_hooks/with-retry.ts";
 import { withHTTP } from "./_hooks/with-http.ts";
 import { withSafe } from "./_hooks/with-safe.ts";
 import { withExternalize, withInternalize } from "./_hooks/with-transform.ts";
-import { pipe } from "./_misc/pipe.ts";
+import { createPipe } from "./_misc/create-pipe.ts";
 import { QueryRequest } from "./_request.ts";
 import { QueryResponse } from "./_response.ts";
 import { QueryPromise } from "./_promise.ts";
@@ -49,7 +49,7 @@ const Query = class {
         return Object.assign(baseQuery, { safe: safeQuery });
 
         function baseQuery(...args: Parameters<GlobalThisFetch>): QueryPromise<QueryResponse> {
-            cache.baseQuery ??= pipe(settledFn)
+            cache.baseQuery ??= createPipe(settledFn)
                 .next(withInternalize)
                 .next(withRetry, settledOptions)
                 .next(withHTTP, settledOptions)
@@ -60,7 +60,7 @@ const Query = class {
         }
 
         function safeQuery(...args: Parameters<GlobalThisFetch>): QueryPromise<Safe<QueryResponse, unknown>> {
-            cache.safeQuery ??= pipe(settledFn)
+            cache.safeQuery ??= createPipe(settledFn)
                 .next(withInternalize)
                 .next(withRetry, settledOptions)
                 .next(withHTTP, settledOptions)

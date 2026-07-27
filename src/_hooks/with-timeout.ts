@@ -3,9 +3,9 @@ import type { QueryRequest } from "../_request.ts";
 import type { QueryPromise } from "../_promise.ts";
 import type { NormalizedFetch } from "../_types.ts";
 
-import { schedule } from "../_misc/schedule.ts";
+import { scheduleTask } from "../_misc/schedule-task.ts";
 import { withAbort } from "./with-abort.ts";
-import { createTimeoutError } from "../_misc/error.ts";
+import { createTimeoutError } from "../_misc/create-timeout-error.ts";
 
 function withTimeout(
     fn: NormalizedFetch,
@@ -16,7 +16,7 @@ function withTimeout(
 
     return function (request: QueryRequest): QueryPromise<QueryResponse> {
         const handle = withAbort(fn)(request);
-        const cleanupTask = schedule(() => {
+        const cleanupTask = scheduleTask(() => {
             const timeoutError = createTimeoutError();
             const abortReason = (options.wrapError ?? ((i) => i))(timeoutError);
 

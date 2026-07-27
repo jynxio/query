@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "vite-plus/test";
 
-import { createAnyAbortSignal } from "../src/_misc/signal.ts";
+import { createAnyAbortSignal } from "../src/_misc/create-any-abort-signal.ts";
 
 /**
  * Copied from WPT.

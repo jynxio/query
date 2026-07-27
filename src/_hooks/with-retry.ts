@@ -3,9 +3,9 @@ import type { QueryResponse } from "../_response.ts";
 import type { NormalizedFetch } from "../_types.ts";
 import type { QueryRequest } from "../_request.ts";
 
-import { sleep } from "../_misc/schedule.ts";
+import { scheduleWait } from "../_misc/schedule-wait.ts";
 import { withTimeout } from "./with-timeout.ts";
-import { createTimeoutError } from "../_misc/error.ts";
+import { createTimeoutError } from "../_misc/create-timeout-error.ts";
 
 const OVERALL_TIMEOUT_SYM = Symbol("overall timeout");
 const ATTEMPT_TIMEOUT_SYM = Symbol("attempt timeout");
@@ -54,7 +54,7 @@ function withRetry(fn: NormalizedFetch, options: Required<QueryOptions>): Normal
 
             // Release the response body before retrying.
             if (output.ok) output.data.body?.cancel().catch(() => {});
-            await sleep(delay, request.signal);
+            await scheduleWait(delay, request.signal);
         }
     }
 }

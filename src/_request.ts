@@ -1,4 +1,5 @@
 import { isRequest, isRequestInitEmpty } from "./_misc/guards.ts";
+import { createAnyAbortSignal } from "./_misc/signal.ts";
 
 type QueryRequestConstructor = {
     /**
@@ -40,7 +41,7 @@ class AbortableQueryRequest extends Request {
         const optsSignal = options?.signal;
         const baseSignal = isRequest(base) ? base.signal : undefined;
         const userSignal = optsSignal === undefined ? baseSignal : optsSignal;
-        const settledSignal = AbortSignal.any([userSignal ?? [], ctrl.signal].flat());
+        const settledSignal = createAnyAbortSignal(userSignal ? [userSignal, ctrl.signal] : [ctrl.signal]);
 
         /**
          * Set `options` as the prototype of `settledOptions` to meet the Fetch Standard requirement that Request access

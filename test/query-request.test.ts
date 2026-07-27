@@ -3,6 +3,7 @@ import { afterEach, describe, expect, test, vi } from "vite-plus/test";
 import { Query } from "../src/index.ts";
 
 afterEach(() => {
+    vi.restoreAllMocks();
     vi.useRealTimers();
 });
 

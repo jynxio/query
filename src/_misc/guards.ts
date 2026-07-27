@@ -1,5 +1,6 @@
 /**
  * Copied from the Fetch Standard.
+ *
  * @see {@link https://fetch.spec.whatwg.org/#requestinit}
  */
 const REQUEST_INIT_MEMBERS = [
@@ -23,6 +24,7 @@ const REQUEST_INIT_MEMBERS = [
 function isRequestInitEmpty(i: ConstructorParameters<typeof Request>[1]): boolean {
     /**
      * Copied from Chromium.
+     *
      * @see {@link https://github.com/chromium/chromium/blob/3bb740088c53ad4946b95596d1b1894da0656ed7/third_party/blink/renderer/core/fetch/request.cc#L214-L222}
      */
     if (i === null) return true;

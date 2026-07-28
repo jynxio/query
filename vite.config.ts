@@ -4,7 +4,11 @@ import coreJSPurePackage from "core-js-pure/package.json" with { type: "json" };
 
 const config = defineConfig({
     test: { include: ["test/**/*.test.ts"] },
-    fmt: { tabWidth: 4, printWidth: 110 },
+    fmt: {
+        tabWidth: 4,
+        printWidth: 110,
+        ignorePatterns: ["README.md"],
+    },
     lint: { options: { typeAware: true, typeCheck: true } },
     pack: {
         minify: true,

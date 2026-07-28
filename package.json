@@ -32,7 +32,8 @@
         "./package.json": "./package.json"
     },
     "publishConfig": {
-        "access": "public"
+        "access": "public",
+        "provenance": true
     },
     "scripts": {
         "build": "vp pack",
@@ -40,6 +41,7 @@
         "test": "vp test",
         "check": "vp check",
         "check:ts": "vp check --no-fmt --no-lint",
+        "changeset": "changeset",
         "prepack": "vp run build"
     },
     "dependencies": {
@@ -51,10 +53,10 @@
         "@arethetypeswrong/core": "0.18.5",
         "@babel/core": "^8.0.1",
         "@babel/preset-env": "^8.0.2",
+        "@changesets/cli": "^2.31.1",
         "@rolldown/plugin-babel": "0.2.3",
         "@types/node": "^25.6.2",
         "babel-plugin-polyfill-corejs3": "^1.0.0",
-        "bumpp": "^11.1.0",
         "publint": "0.3.22",
         "typescript": "^7.0.2",
         "vite": "npm:@voidzero-dev/vite-plus-core@0.2.6",

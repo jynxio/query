@@ -1,0 +1,37 @@
+name: Release
+
+on:
+    push:
+        branches: [main]
+    workflow_dispatch:
+
+permissions:
+    contents: write
+    pull-requests: write
+    id-token: write
+
+concurrency:
+    group: release-${{ github.ref }}
+    cancel-in-progress: false
+
+jobs:
+    release:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v6
+            - uses: voidzero-dev/setup-vp@v1
+              with:
+                  node-version: "24"
+                  run-install: false
+            - run: vp install --frozen-lockfile
+            - run: vp check
+            - run: vp test
+            - uses: changesets/action@v1
+              with:
+                  publish: vp exec changeset publish
+                  version: vp exec changeset version
+                  title: "chore: release"
+                  commit: "chore: release"
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
